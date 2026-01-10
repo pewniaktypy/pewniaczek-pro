@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="pl" data-bs-theme="dark">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Pewniaczek Pro</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        body { background-color: #121212; color: #e0e0e0; font-size: 0.85rem; }
+        .table-hover tbody tr:hover { background-color: #2c2c2c; }
+        .live-row { font-style: italic; border-left: 3px solid #dc3545; }
+        .live-badge { animation: pulse 1.5s infinite; background-color: #dc3545; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        
+        .fav-icon { cursor: pointer; color: #6c757d; font-size: 1.1rem; }
+        .fav-icon.active { color: #ffc107; }
+        
+        .col-league { width: 12%; max-width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .col-match { width: 30%; }
+        .stat-cell { font-size: 0.8rem; font-weight: bold; text-align: center; width: 8%; color: #aaa; }
+        .verdict-cell { font-weight: bold; text-align: center; width: 10%; }
+        
+        .filter-section { background-color: #1e1e1e; border-bottom: 1px solid #333; padding: 10px 15px; margin-bottom: 15px; border-radius: 6px; }
+        .filter-btn { min-width: 70px; }
+        .filter-btn.active { border-width: 2px; }
+
+        /* Złota linia oddzielająca ulubione */
+        .last-fav-row {
+            border-bottom: 3px solid #ffc107 !important; 
+        }
+    </style>
+  </head>
+  <body>
+    <div class="container-fluid py-3 px-3">
+        <header class="d-flex justify-content-between align-items-center mb-2">
+            <h1 class="h5 m-0"><i class="bi bi-trophy-fill text-warning"></i> Pewniaczek Pro</h1>
+            <div class="btn-group">
+                <a href="/?date={{ today_date }}" class="btn btn-sm btn-{{ 'primary' if current_view == 'today' else 'outline-secondary' }}">DZIŚ</a>
+                <a href="/?date={{ tomorrow_date }}" class="btn btn-sm btn-{{ 'primary' if current_view == 'tomorrow' else 'outline-secondary' }}">JUTRO</a>
+            </div>
+        </header>
+
+        <div class="filter-section">
+            <div class="row g-2 align-items-center">
+                <div class="col-md-5 d-flex gap-2">
+                    <button class="btn btn-sm btn-light filter-btn active" onclick="setVerdictFilter('all', this)">Wszystkie</button>
+                    <button class="btn btn-sm btn-outline-success filter-btn" onclick="toggleVerdictFilter('TAK!!', this)">TAK!!</button>
+                    <button class="btn btn-sm btn-outline-success filter-btn" onclick="toggleVerdictFilter('TAK', this)">TAK</button>
+                    <button class="btn btn-sm btn-outline-warning filter-btn" onclick="toggleVerdictFilter('MOŻE', this)">MOŻE</button>
+                </div>
+
+                <div class="col-md-5 d-flex gap-2 align-items-center border-start border-secondary ps-3">
+                    <span class="text-muted small">Pokaż zespoły z min.</span>
+                    <input type="number" id="minGamesInput" class="form-control form-control-sm text-center" style="width: 60px;" value="0" min="0" max="10" onchange="applyFilters()">
+                    <span class="text-muted small">meczami na</span>
+                    <select id="baseStatSelect" class="form-select form-select-sm" style="width: 110px;" onchange="applyFilters()">
+                        <option value="10">Ost. 10</option>
+                        <option value="6">Ost. 6</option>
+                        <option value="3">Ost. 3</option>
+                    </select>
+                </div>
+                
+                <div class="col-md-2 text-end text-muted small" id="counterInfo">
+                    Meczów: {{ matches|length }}
+                </div>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-dark table-striped align-middle table-hover table-sm" id="matchesTable">
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">Godz.</th>
+                        <th>Liga</th>
+                        <th>Mecz</th>
+                        <th class="stat-cell" title="Statystyki 10">G(10)</th>
+                        <th class="stat-cell" title="Statystyki 10">A(10)</th>
+                        <th class="verdict-cell">Werdykt</th>
+                        <th class="text-center">Analiza</th>
+                        <th class="text-end">Wynik</th>
+                        <th class="text-center"><i class="bi bi-star-fill"></i></th>
+                    </tr>
+                </thead>
+                <tbody id="matchesBody">
+                    {% for index, row in matches.iterrows() %}
+                    <tr class="match-row" 
+                        data-id="{{ row['id'] }}"
+                        data-verdict="{{ row['verdict'] }}"
+                        data-h-10="{{ row.get('h_l10', 0) }}" data-a-10="{{ row.get('a_l10', 0) }}"
+                        data-h-6="{{ row.get('h_l6', 0) }}"   data-a-6="{{ row.get('a_l6', 0) }}"
+                        data-h-3="{{ row.get('h_l3', 0) }}"   data-a-3="{{ row.get('a_l3', 0) }}">
+                        
+                        <td>
+                            {{ row['time'] }}
+                            {% if row['is_live'] %}<br><span class="badge live-badge rounded-pill" style="font-size:0.5em">LIVE</span>{% endif %}
+                        </td>
+                        <td class="col-league">{{ row['league_country'] }}</td>
+                        <td>{{ row['match_name'] }}</td>
+                        <td class="stat-cell">{{ row['stat_h'] }}</td>
+                        <td class="stat-cell">{{ row['stat_a'] }}</td>
+                        <td class="verdict-cell {{ row['verdict_class'] }}">{{ row['verdict'] }}</td>
+                        <td class="text-center">
+                             <button onclick="openAnalysis('{{ row['id'] }}', '{{ row['home_id'] }}', '{{ row['away_id'] }}', '{{ row['home_name'] }}', '{{ row['away_name'] }}')" 
+                               class="btn btn-outline-info btn-sm opacity-75 py-0 px-2"><i class="bi bi-graph-up"></i></button>
+                        </td>
+                        <td class="text-end font-monospace fw-bold">{{ row['formatted_score'] }}</td>
+                        <td class="text-center"><i class="bi bi-star fav-icon" onclick="toggleFav(this, '{{ row['id'] }}')"></i></td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="9" class="text-center py-5">Brak meczów.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let verdictFilters = ['all'];
+
+        function setVerdictFilter(type, btn) {
+            verdictFilters = [type];
+            updateButtons();
+            applyFilters();
+        }
+
+        function toggleVerdictFilter(type, btn) {
+            if (verdictFilters.includes('all')) verdictFilters = [];
+            if (verdictFilters.includes(type)) verdictFilters = verdictFilters.filter(f => f !== type);
+            else verdictFilters.push(type);
+            if (verdictFilters.length === 0) verdictFilters = ['all'];
+            updateButtons();
+            applyFilters();
+        }
+
+        function updateButtons() {
+            const btns = document.querySelectorAll('.filter-btn');
+            btns.forEach(b => {
+                const txt = b.getAttribute('onclick');
+                let type = '';
+                if (txt.includes("'all'")) type = 'all';
+                else if (txt.includes("'TAK!!'")) type = 'TAK!!';
+                else if (txt.includes("'TAK'")) type = 'TAK';
+                else if (txt.includes("'MOŻE'")) type = 'MOŻE';
+
+                if (verdictFilters.includes(type)) {
+                    b.classList.add('active', type === 'MOŻE' ? 'btn-warning' : (type === 'all' ? 'btn-light' : 'btn-success'));
+                    if (type !== 'all') b.classList.add('text-black');
+                    b.classList.remove('btn-outline-success', 'btn-outline-warning', 'btn-outline-light');
+                } else {
+                    b.classList.remove('active', 'btn-light', 'btn-success', 'btn-warning', 'text-black');
+                    b.classList.add(type === 'MOŻE' ? 'btn-outline-warning' : (type === 'all' ? 'btn-outline-light' : 'btn-outline-success'));
+                }
+            });
+        }
+
+        function applyFilters() {
+            const minGames = parseInt(document.getElementById('minGamesInput').value) || 0;
+            const baseStat = document.getElementById('baseStatSelect').value; 
+            
+            const rows = document.querySelectorAll('.match-row');
+            let visibleCount = 0;
+
+            rows.forEach(row => {
+                const verdict = row.getAttribute('data-verdict');
+                let passVerdict = verdictFilters.includes('all') || verdictFilters.includes(verdict);
+
+                const hVal = parseInt(row.getAttribute(`data-h-${baseStat}`)) || 0;
+                const aVal = parseInt(row.getAttribute(`data-a-${baseStat}`)) || 0;
+                let passNumeric = (hVal >= minGames) || (aVal >= minGames);
+
+                if (passVerdict && passNumeric) {
+                    row.style.display = '';
+                    visibleCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+            document.getElementById('counterInfo').innerText = "Wyświetlono: " + visibleCount;
+        }
+
+        // --- SORTOWANIE ULUBIONYCH + LINIA ODGRADZAJĄCA ---
+        function sortFavorites() {
+            const tbody = document.getElementById('matchesBody');
+            const rows = Array.from(document.querySelectorAll('.match-row'));
+            let favs = JSON.parse(localStorage.getItem('pewniaczek_favs') || "[]");
+            
+            // 1. Reset linii
+            rows.forEach(r => r.classList.remove('last-fav-row'));
+
+            // 2. Sortowanie
+            rows.sort((a, b) => {
+                const isFavA = favs.includes(a.getAttribute('data-id'));
+                const isFavB = favs.includes(b.getAttribute('data-id'));
+                if (isFavA && !isFavB) return -1;
+                if (!isFavA && isFavB) return 1;
+                return 0;
+            });
+
+            // 3. Dodanie linii po ostatnim ulubionym (jeśli są jakieś ulubione i są też zwykłe)
+            let lastFavIndex = -1;
+            rows.forEach((row, index) => {
+                tbody.appendChild(row);
+                if (favs.includes(row.getAttribute('data-id'))) {
+                    lastFavIndex = index;
+                }
+            });
+
+            // Jeśli znaleziono ulubione i nie jest to ostatni wiersz tabeli -> dodaj linię
+            if (lastFavIndex > -1 && lastFavIndex < rows.length - 1) {
+                rows[lastFavIndex].classList.add('last-fav-row');
+            }
+        }
+
+        // --- OBSŁUGA ---
+        function openAnalysis(id, homeId, awayId, hName, aName) {
+            const url = `/analyze/${id}?home=${homeId}&away=${awayId}&h_name=${encodeURIComponent(hName)}&a_name=${encodeURIComponent(aName)}`;
+            window.open(url, 'PewniaczekAnaliza', 'width=1100,height=800,scrollbars=yes,resizable=yes');
+        }
+
+        function toggleFav(element, matchId) {
+            element.classList.toggle('bi-star');
+            element.classList.toggle('bi-star-fill');
+            element.classList.toggle('active');
+            let favs = JSON.parse(localStorage.getItem('pewniaczek_favs') || "[]");
+            if (element.classList.contains('active')) {
+                if (!favs.includes(matchId)) favs.push(matchId);
+            } else {
+                favs = favs.filter(id => id !== matchId);
+            }
+            localStorage.setItem('pewniaczek_favs', JSON.stringify(favs));
+            
+            // Odśwież sortowanie, żeby linia się zaktualizowała
+            sortFavorites();
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            let favs = JSON.parse(localStorage.getItem('pewniaczek_favs') || "[]");
+            document.querySelectorAll('.fav-icon').forEach(el => {
+                if (favs.includes(el.getAttribute('onclick').match(/'([^']+)'/)[1])) {
+                    el.classList.remove('bi-star');
+                    el.classList.add('bi-star-fill', 'active');
+                }
+            });
+            sortFavorites();
+        });
+    </script>
+  </body>
+</html>
