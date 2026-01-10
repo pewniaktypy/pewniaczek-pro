@@ -454,7 +454,7 @@ def analyze(fixture_id):
         verdict=verdict, verdict_class=v_class, current_score="?")
 
 if __name__ == '__main__':
-    if not os.path.exists(DB_FILE): init_db()
+    init_db()
     t = threading.Thread(target=background_worker)
     t.daemon = True
     t.start()
