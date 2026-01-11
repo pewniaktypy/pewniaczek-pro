@@ -105,7 +105,13 @@
                         <td class="stat-cell">{{ row['stat_h'] }}</td>
                         <td class="stat-cell">{{ row['stat_a'] }}</td>
                         <td class="verdict-cell {{ row['verdict_class'] }}" data-val="{{ row['verdict'] }}">{{ row['verdict'] }}</td>
-                        <td class="text-center"><a href="/analyze/{{ row['id'] }}" target="_blank" class="btn btn-outline-info btn-sm opacity-75 py-0 px-2"><i class="bi bi-graph-up"></i></a></td>
+                        
+                        <td class="text-center">
+                            <a href="#" onclick="openAnalysisWindow('/analyze/{{ row['id'] }}'); return false;" class="btn btn-outline-info btn-sm opacity-75 py-0 px-2">
+                                <i class="bi bi-graph-up"></i>
+                            </a>
+                        </td>
+
                         <td class="text-end font-monospace fw-bold">{{ row['formatted_score'] }}</td>
                         <td class="text-center">
                             <i class="bi bi-star text-secondary star-btn" onclick="toggleFavorite({{ row['id'] }}, this)"></i>
@@ -120,8 +126,19 @@
         </div>
     </div>
     <script>
+        // --- FUNKCJA OTWIERAJĄCA POPUP ---
+        function openAnalysisWindow(url) {
+            // Otwórz okno o wymiarach 1100x800 na środku
+            const width = 1100;
+            const height = 800;
+            const left = (screen.width - width) / 2;
+            const top = (screen.height - height) / 2;
+            
+            window.open(url, 'AnalysisWindow', `width=${width},height=${height},top=${top},left=${left},resizable=yes,scrollbars=yes`);
+        }
+
+        // --- RESZTA LOGIKI (Ulubione, Filtry, Sortowanie) ---
         function getFavorites() { return JSON.parse(localStorage.getItem('pewniaczek_favs')) || []; }
-        
         function toggleFavorite(id, btn) {
             let favs = getFavorites();
             if (favs.includes(id)) {
@@ -136,21 +153,16 @@
             localStorage.setItem('pewniaczek_favs', JSON.stringify(favs));
             if (activeVerdict === 'FAV') applyFilters();
         }
-
         function restoreFavorites() {
             const favs = getFavorites();
             document.querySelectorAll('.match-row').forEach(row => {
                 const id = parseInt(row.getAttribute('data-id'));
                 if (favs.includes(id)) {
                     const btn = row.querySelector('.star-btn');
-                    if(btn) {
-                        btn.classList.remove('bi-star', 'text-secondary');
-                        btn.classList.add('bi-star-fill', 'text-warning');
-                    }
+                    if(btn) { btn.classList.remove('bi-star', 'text-secondary'); btn.classList.add('bi-star-fill', 'text-warning'); }
                 }
             });
         }
-
         let activeVerdict = 'ALL';
         function toggleFilter(verdict, btn) {
             document.querySelectorAll('.btn-outline-success, .btn-outline-warning, .btn-light').forEach(b => b.classList.remove('active'));
@@ -158,14 +170,7 @@
             else { activeVerdict = verdict; btn.classList.add('active'); }
             applyFilters();
         }
-        function resetFilters(btn) { 
-            activeVerdict = 'ALL'; 
-            document.getElementById('minMatchesInput').value = 0; 
-            document.querySelectorAll('.btn').forEach(b => b.classList.remove('active')); 
-            btn.classList.add('active'); 
-            applyFilters(); 
-        }
-
+        function resetFilters(btn) { activeVerdict = 'ALL'; document.getElementById('minMatchesInput').value = 0; document.querySelectorAll('.btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); applyFilters(); }
         function applyFilters() {
             const hideFinished = document.getElementById('hideFinishedSwitch').checked;
             const minMatches = parseInt(document.getElementById('minMatchesInput').value) || 0;
@@ -189,7 +194,6 @@
             });
             document.getElementById('counterInfo').innerText = "Widoczne: " + visible;
         }
-
         let sortDir = 1;
         function sortTable(n) {
             const tbody = document.getElementById("matchesBody");
