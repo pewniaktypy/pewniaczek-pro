@@ -33,7 +33,6 @@
             </div>
         </div>
     </div>
-
     <div class="container-fluid py-3 px-3">
         <header class="d-flex justify-content-between align-items-center mb-2">
             <h1 class="h5 m-0"><i class="bi bi-trophy-fill text-warning"></i> Pewniaczek Pro</h1>
@@ -42,7 +41,6 @@
                 <a href="/?date={{ tomorrow_date }}" class="btn btn-sm btn-{{ 'primary' if current_view == tomorrow_date else 'outline-secondary' }}">JUTRO</a>
             </div>
         </header>
-        
         <div class="filter-section d-flex flex-wrap gap-3 align-items-center justify-content-between">
             <div class="d-flex gap-2 align-items-center">
                 <span class="text-muted small">Pokaż:</span>
@@ -53,7 +51,6 @@
                 <button class="btn btn-sm btn-outline-warning" onclick="toggleFilter('MOŻE', this)">MOŻE</button>
                 <button class="btn btn-sm btn-light active" onclick="resetFilters(this)">Wszystkie</button>
             </div>
-
             <div class="d-flex gap-2 align-items-center border-start border-end border-secondary px-3">
                 <span class="text-muted small">Min. meczów:</span>
                 <input type="number" id="minMatchesInput" class="form-control form-control-sm bg-dark text-light border-secondary" style="width: 60px;" value="0" min="0" onchange="applyFilters()">
@@ -64,15 +61,12 @@
                     <option value="3">Ost. 3</option>
                 </select>
             </div>
-
             <div class="form-check form-switch">
                 <input class="form-check-input" type="checkbox" id="hideFinishedSwitch" onchange="applyFilters()">
                 <label class="form-check-label small text-muted" for="hideFinishedSwitch">Ukryj zakończone</label>
             </div>
-            
             <div class="text-muted small" id="counterInfo">Mecze: 0</div>
         </div>
-
         <div class="table-responsive">
             <table class="table table-dark table-striped align-middle table-hover table-sm" id="matchesTable">
                 <thead>
@@ -98,20 +92,17 @@
                         data-h-l10="{{ row['h_l10'] }}" data-a-l10="{{ row['a_l10'] }}"
                         data-h-l6="{{ row['h_l6'] }}" data-a-l6="{{ row['a_l6'] }}"
                         data-h-l3="{{ row['h_l3'] }}" data-a-l3="{{ row['a_l3'] }}">
-                        
                         <td data-val="{{ row['time'] }}">{{ row['time'] }}{% if row['is_live'] %}<br><span class="badge live-badge rounded-pill" style="font-size:0.5em">LIVE</span>{% endif %}</td>
                         <td class="col-league" data-val="{{ row['league_country'] }}">{{ row['league_country'] }}</td>
                         <td>{{ row['match_name'] }}</td>
                         <td class="stat-cell">{{ row['stat_h'] }}</td>
                         <td class="stat-cell">{{ row['stat_a'] }}</td>
                         <td class="verdict-cell {{ row['verdict_class'] }}" data-val="{{ row['verdict'] }}">{{ row['verdict'] }}</td>
-                        
                         <td class="text-center">
-                            <a href="#" onclick="openAnalysisWindow('/analyze/{{ row['id'] }}'); return false;" class="btn btn-outline-info btn-sm opacity-75 py-0 px-2">
+                            <a href="javascript:void(0)" onclick="openAnalysisWindow('/analyze/{{ row['id'] }}');" class="btn btn-outline-info btn-sm opacity-75 py-0 px-2">
                                 <i class="bi bi-graph-up"></i>
                             </a>
                         </td>
-
                         <td class="text-end font-monospace fw-bold">{{ row['formatted_score'] }}</td>
                         <td class="text-center">
                             <i class="bi bi-star text-secondary star-btn" onclick="toggleFavorite({{ row['id'] }}, this)"></i>
@@ -126,18 +117,13 @@
         </div>
     </div>
     <script>
-        // --- FUNKCJA OTWIERAJĄCA POPUP ---
         function openAnalysisWindow(url) {
-            // Otwórz okno o wymiarach 1100x800 na środku
             const width = 1100;
             const height = 800;
             const left = (screen.width - width) / 2;
             const top = (screen.height - height) / 2;
-            
             window.open(url, 'AnalysisWindow', `width=${width},height=${height},top=${top},left=${left},resizable=yes,scrollbars=yes`);
         }
-
-        // --- RESZTA LOGIKI (Ulubione, Filtry, Sortowanie) ---
         function getFavorites() { return JSON.parse(localStorage.getItem('pewniaczek_favs')) || []; }
         function toggleFavorite(id, btn) {
             let favs = getFavorites();

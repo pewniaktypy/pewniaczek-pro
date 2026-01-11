@@ -27,11 +27,13 @@ def get_db_connection():
 def init_db():
     conn = get_db_connection()
     conn.execute('CREATE TABLE IF NOT EXISTS matches (id INTEGER PRIMARY KEY, date_str TEXT, sort_priority INTEGER, timestamp INTEGER, data_json TEXT, last_full_update INTEGER)')
-    conn.execute('CREATE TABLE IF NOT EXISTS team_stats_cache (team_id INTEGER PRIMARY KEY, last_10 INTEGER, last_6 INTEGER, last_3 INTEGER, updated_at INTEGER)')
+    # Usuwamy tabelę cache statystyk przy starcie, bo logika się zmieniła i stare dane by mieszały
+    conn.execute('DROP TABLE IF EXISTS team_stats_cache') 
+    conn.execute('CREATE TABLE IF NOT EXISTS team_stats_cache (team_id INTEGER, match_type TEXT, last_10 INTEGER, last_6 INTEGER, last_3 INTEGER, updated_at INTEGER, PRIMARY KEY (team_id, match_type))')
     conn.commit()
     conn.close()
 
-# --- LOGIKA STATYSTYK (DO TABELI GŁÓWNEJ) ---
+# --- LOGIKA BIZNESOWA ---
 def process_goal_minutes(events, team_id):
     goals = []
     if not events: return []
@@ -58,15 +60,44 @@ def get_fixtures_details_bulk(ids_list):
         except: pass
     return details_map
 
-def calculate_team_stats(team_id):
+def calculate_smart_stats(team_id, target_type):
+    """
+    Inteligentna funkcja:
+    target_type: 'League', 'Cup', lub 'Friendly'
+    Pobiera 40 ostatnich meczów i filtruje 10 pasujących do typu.
+    """
     try:
-        resp = requests.get(API_URL, headers=HEADERS, params={"team": team_id, "last": 10})
+        # Pobieramy więcej (40), żeby znaleźć 10 pasujących
+        resp = requests.get(API_URL, headers=HEADERS, params={"team": team_id, "last": 40})
         if resp.status_code != 200: return None
-        matches = resp.json().get('response', [])
-        ids = [m['fixture']['id'] for m in matches]
+        all_matches = resp.json().get('response', [])
+        
+        filtered_matches = []
+        for m in all_matches:
+            m_league_type = m['league']['type'] # 'League' lub 'Cup'
+            m_league_name = m['league']['name']
+            
+            is_friendly = 'Friendly' in m_league_name or 'Club Friendlies' in m_league_name
+            
+            if target_type == 'Friendly':
+                if is_friendly: filtered_matches.append(m)
+            elif target_type == 'Cup':
+                if m_league_type == 'Cup' and not is_friendly: filtered_matches.append(m)
+            else: # League (Domyślnie)
+                if m_league_type == 'League' and not is_friendly: filtered_matches.append(m)
+                
+            if len(filtered_matches) >= 10: break # Mamy komplet
+        
+        # Jeśli nie znaleziono 10 meczów danego typu (np. mało pucharów), bierzemy co jest
+        # Jeśli pusto w pucharach, ewentualnie można wziąć ogólne, ale trzymajmy się rygoru
+        
+        ids = [m['fixture']['id'] for m in filtered_matches]
+        if not ids: return {'last_10': 0, 'last_6': 0, 'last_3': 0} # Brak danych historycznych
+        
         det_map = get_fixtures_details_bulk(ids)
         stats = {'last_10': 0, 'last_6': 0, 'last_3': 0}
-        for i, m in enumerate(matches):
+        
+        for i, m in enumerate(filtered_matches):
             fid = m['fixture']['id']
             detail = det_map.get(fid)
             if detail and detail.get('events'):
@@ -79,16 +110,16 @@ def calculate_team_stats(team_id):
         return stats
     except: return None
 
-def update_db_stats(team_id, stats):
+def update_db_stats(team_id, match_type, stats):
     conn = get_db_connection()
-    conn.execute('INSERT OR REPLACE INTO team_stats_cache (team_id, last_10, last_6, last_3, updated_at) VALUES (?,?,?,?,?)',
-                 (team_id, stats['last_10'], stats['last_6'], stats['last_3'], int(time.time())))
+    conn.execute('INSERT OR REPLACE INTO team_stats_cache (team_id, match_type, last_10, last_6, last_3, updated_at) VALUES (?,?,?,?,?,?)',
+                 (team_id, match_type, stats['last_10'], stats['last_6'], stats['last_3'], int(time.time())))
     conn.commit()
     conn.close()
 
-def get_cached_stats(team_id):
+def get_cached_stats(team_id, match_type):
     conn = get_db_connection()
-    row = conn.execute('SELECT * FROM team_stats_cache WHERE team_id = ?', (team_id,)).fetchone()
+    row = conn.execute('SELECT * FROM team_stats_cache WHERE team_id = ? AND match_type = ?', (team_id, match_type)).fetchone()
     conn.close()
     if row and (int(time.time()) - row['updated_at'] < 86400):
         return {'last_10': row['last_10'], 'last_6': row['last_6'], 'last_3': row['last_3']}
@@ -101,7 +132,7 @@ def get_verdict(sh, sa):
     if sh['last_10'] >= 4 or sa['last_10'] >= 4: return "MOŻE", "text-warning"
     return "-", "text-secondary"
 
-# --- WORKER (DO CIĄGŁEJ PRACY) ---
+# --- WORKER ---
 def perform_full_update_for_date(date_str):
     global progress_status
     progress_status["message"] = f"Pobieranie danych na {date_str}..."
@@ -115,20 +146,35 @@ def perform_full_update_for_date(date_str):
         conn = get_db_connection()
         conn.execute("DELETE FROM matches WHERE date_str = ?", (date_str,))
         conn.commit()
+        
         for i, item in enumerate(data):
             progress_status["current"] = i + 1
             f = item['fixture']
             h_id, a_id = item['teams']['home']['id'], item['teams']['away']['id']
-            s_h = get_cached_stats(h_id) or calculate_team_stats(h_id)
-            if s_h: update_db_stats(h_id, s_h)
-            s_a = get_cached_stats(a_id) or calculate_team_stats(a_id)
-            if s_a: update_db_stats(a_id, s_a)
+            
+            # OKREŚLANIE TYPU MECZU
+            league_type = item['league']['type'] # 'League' lub 'Cup'
+            league_name = item['league']['name']
+            match_type = 'League'
+            if 'Friendly' in league_name or 'Club Friendlies' in league_name:
+                match_type = 'Friendly'
+            elif league_type == 'Cup':
+                match_type = 'Cup'
+            
+            # Pobieranie statystyk pod konkretny typ
+            s_h = get_cached_stats(h_id, match_type) or calculate_smart_stats(h_id, match_type)
+            if s_h: update_db_stats(h_id, match_type, s_h)
+            
+            s_a = get_cached_stats(a_id, match_type) or calculate_smart_stats(a_id, match_type)
+            if s_a: update_db_stats(a_id, match_type, s_a)
+            
             v, vc = get_verdict(s_h, s_a)
             status = f['status']['short']
             is_live = status in ['1H','2H','HT','ET','LIVE']
             prio = 0 if is_live else (2 if status in ['FT','AET','PEN'] else 1)
             score_str = "-"
             if item['goals']['home'] is not None: score_str = f"{item['goals']['home']}-{item['goals']['away']}"
+            
             m_obj = {
                 'id': f['id'], 'time': datetime.fromisoformat(f['date'].replace('Z','+00:00')).astimezone(PL_TIMEZONE).strftime('%H:%M'),
                 'league_country': f"{item['league']['name']} ({item['league']['country']})",
@@ -137,6 +183,7 @@ def perform_full_update_for_date(date_str):
                 'formatted_score': score_str, 'status': status, 'is_live': is_live,
                 'stat_h': f"{s_h['last_10']}/10" if s_h else "-", 'stat_a': f"{s_a['last_10']}/10" if s_a else "-",
                 'verdict': v, 'verdict_class': vc,
+                'match_type_display': match_type, # Do wyświetlenia w debugu lub tooltipie
                 'h_l10': s_h['last_10'] if s_h else 0, 'h_l6': s_h['last_6'] if s_h else 0, 'h_l3': s_h['last_3'] if s_h else 0,
                 'a_l10': s_a['last_10'] if s_a else 0, 'a_l6': s_a['last_6'] if s_a else 0, 'a_l3': s_a['last_3'] if s_a else 0
             }
@@ -186,7 +233,6 @@ def background_worker():
             update_live_scores(today)
         time.sleep(120)
 
-# --- ROUTES ---
 @app.route('/progress')
 def get_progress(): return jsonify(progress_status)
 
@@ -200,71 +246,41 @@ def index():
     matches = [json.loads(r['data_json']) for r in rows]
     return render_template('index.html', matches=pd.DataFrame(matches), today_date=now.strftime('%Y-%m-%d'), tomorrow_date=(now + timedelta(days=1)).strftime('%Y-%m-%d'), current_view=date_str)
 
-# POMOCNICZA FUNKCJA DO STATYSTYK W ANALIZIE
 def get_detailed_stats(team_id, matches_count=5):
     try:
         resp = requests.get(API_URL, headers=HEADERS, params={"team": team_id, "last": matches_count})
         if resp.status_code != 200: return {}
         matches = resp.json().get('response', [])
-        
-        wins = 0
-        draws = 0
-        losses = 0
-        goals_for = 0
-        goals_against = 0
-        
+        wins = 0; draws = 0; losses = 0; goals_for = 0; goals_against = 0
         for m in matches:
             home = m['teams']['home']['id'] == team_id
             g_f = m['goals']['home'] if home else m['goals']['away']
             g_a = m['goals']['away'] if home else m['goals']['home']
-            
             if g_f is None: g_f = 0
             if g_a is None: g_a = 0
-            
-            goals_for += g_f
-            goals_against += g_a
-            
+            goals_for += g_f; goals_against += g_a
             if g_f > g_a: wins += 1
             elif g_f == g_a: draws += 1
             else: losses += 1
-            
-        return {
-            'matches': matches,
-            'wins': wins, 'draws': draws, 'losses': losses,
-            'goals_for': goals_for, 'goals_against': goals_against
-        }
-    except:
-        return {}
+        return {'matches': matches, 'wins': wins, 'draws': draws, 'losses': losses, 'goals_for': goals_for, 'goals_against': goals_against}
+    except: return {}
 
 @app.route('/analyze/<int:fixture_id>')
 def analyze(fixture_id):
     try:
-        # 1. Pobierz szczegóły meczu
         resp = requests.get(API_URL, headers=HEADERS, params={"ids": fixture_id})
         if resp.status_code != 200: return "Błąd API (Match Details)", 500
         data = resp.json().get('response', [])
         if not data: return "Nie znaleziono meczu", 404
         match_data = data[0]
-        
         h_id = match_data['teams']['home']['id']
         a_id = match_data['teams']['away']['id']
-
-        # 2. Pobierz H2H
         h2h_resp = requests.get(API_URL, headers=HEADERS, params={"h2h": f"{h_id}-{a_id}"})
         h2h = h2h_resp.json().get('response', []) if h2h_resp.status_code == 200 else []
-
-        # 3. Pobierz Formę (Stats Home / Stats Away) - TO NAPRAWIA BŁĄD "undefined"
         stats_home = get_detailed_stats(h_id, 5)
         stats_away = get_detailed_stats(a_id, 5)
-
-        return render_template('analysis.html', 
-                             fixture_id=fixture_id, 
-                             match=match_data, 
-                             h2h=h2h, 
-                             stats_home=stats_home, 
-                             stats_away=stats_away)
-    except Exception as e:
-        return f"Błąd krytyczny podczas analizy: {str(e)}", 500
+        return render_template('analysis.html', fixture_id=fixture_id, match=match_data, h2h=h2h, stats_home=stats_home, stats_away=stats_away)
+    except Exception as e: return f"Błąd krytyczny podczas analizy: {str(e)}", 500
 
 if __name__ == '__main__':
     init_db()
