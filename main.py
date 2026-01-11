@@ -31,7 +31,7 @@ def init_db():
     conn.commit()
     conn.close()
 
-# --- LOGIKA STATYSTYK ---
+# --- LOGIKA STATYSTYK (DO TABELI GŁÓWNEJ) ---
 def process_goal_minutes(events, team_id):
     goals = []
     if not events: return []
@@ -101,7 +101,7 @@ def get_verdict(sh, sa):
     if sh['last_10'] >= 4 or sa['last_10'] >= 4: return "MOŻE", "text-warning"
     return "-", "text-secondary"
 
-# --- WORKER ---
+# --- WORKER (DO CIĄGŁEJ PRACY) ---
 def perform_full_update_for_date(date_str):
     global progress_status
     progress_status["message"] = f"Pobieranie danych na {date_str}..."
@@ -186,6 +186,7 @@ def background_worker():
             update_live_scores(today)
         time.sleep(120)
 
+# --- ROUTES ---
 @app.route('/progress')
 def get_progress(): return jsonify(progress_status)
 
@@ -199,23 +200,71 @@ def index():
     matches = [json.loads(r['data_json']) for r in rows]
     return render_template('index.html', matches=pd.DataFrame(matches), today_date=now.strftime('%Y-%m-%d'), tomorrow_date=(now + timedelta(days=1)).strftime('%Y-%m-%d'), current_view=date_str)
 
+# POMOCNICZA FUNKCJA DO STATYSTYK W ANALIZIE
+def get_detailed_stats(team_id, matches_count=5):
+    try:
+        resp = requests.get(API_URL, headers=HEADERS, params={"team": team_id, "last": matches_count})
+        if resp.status_code != 200: return {}
+        matches = resp.json().get('response', [])
+        
+        wins = 0
+        draws = 0
+        losses = 0
+        goals_for = 0
+        goals_against = 0
+        
+        for m in matches:
+            home = m['teams']['home']['id'] == team_id
+            g_f = m['goals']['home'] if home else m['goals']['away']
+            g_a = m['goals']['away'] if home else m['goals']['home']
+            
+            if g_f is None: g_f = 0
+            if g_a is None: g_a = 0
+            
+            goals_for += g_f
+            goals_against += g_a
+            
+            if g_f > g_a: wins += 1
+            elif g_f == g_a: draws += 1
+            else: losses += 1
+            
+        return {
+            'matches': matches,
+            'wins': wins, 'draws': draws, 'losses': losses,
+            'goals_for': goals_for, 'goals_against': goals_against
+        }
+    except:
+        return {}
+
 @app.route('/analyze/<int:fixture_id>')
 def analyze(fixture_id):
-    # Logika analizy - tu pobieramy dane szczegółowe
     try:
+        # 1. Pobierz szczegóły meczu
         resp = requests.get(API_URL, headers=HEADERS, params={"ids": fixture_id})
-        if resp.status_code != 200: return "Błąd API", 500
-        data = resp.json().get('response', [])[0]
+        if resp.status_code != 200: return "Błąd API (Match Details)", 500
+        data = resp.json().get('response', [])
+        if not data: return "Nie znaleziono meczu", 404
+        match_data = data[0]
         
-        # Pobranie H2H
-        h2h_resp = requests.get(API_URL, headers=HEADERS, params={"h2h": f"{data['teams']['home']['id']}-{data['teams']['away']['id']}"})
+        h_id = match_data['teams']['home']['id']
+        a_id = match_data['teams']['away']['id']
+
+        # 2. Pobierz H2H
+        h2h_resp = requests.get(API_URL, headers=HEADERS, params={"h2h": f"{h_id}-{a_id}"})
         h2h = h2h_resp.json().get('response', []) if h2h_resp.status_code == 200 else []
 
-        # Możemy tu pobrać też ostatnie mecze obu drużyn, jeśli szablon tego wymaga
-        # Na razie przekazujemy podstawowe dane + H2H
-        return render_template('analysis.html', fixture_id=fixture_id, match=data, h2h=h2h)
+        # 3. Pobierz Formę (Stats Home / Stats Away) - TO NAPRAWIA BŁĄD "undefined"
+        stats_home = get_detailed_stats(h_id, 5)
+        stats_away = get_detailed_stats(a_id, 5)
+
+        return render_template('analysis.html', 
+                             fixture_id=fixture_id, 
+                             match=match_data, 
+                             h2h=h2h, 
+                             stats_home=stats_home, 
+                             stats_away=stats_away)
     except Exception as e:
-        return f"Błąd podczas analizy: {str(e)}", 500
+        return f"Błąd krytyczny podczas analizy: {str(e)}", 500
 
 if __name__ == '__main__':
     init_db()
