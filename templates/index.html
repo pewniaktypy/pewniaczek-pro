@@ -17,6 +17,8 @@
         .stat-cell { font-size: 0.8rem; font-weight: bold; text-align: center; width: 8%; color: #aaa; }
         .verdict-cell { font-weight: bold; text-align: center; width: 10%; }
         .filter-section { background-color: #1e1e1e; border-bottom: 1px solid #333; padding: 10px 15px; margin-bottom: 15px; border-radius: 6px; }
+        .star-btn { cursor: pointer; font-size: 1.1rem; transition: transform 0.2s; }
+        .star-btn:hover { transform: scale(1.2); }
     </style>
   </head>
   <body>
@@ -31,6 +33,7 @@
             </div>
         </div>
     </div>
+
     <div class="container-fluid py-3 px-3">
         <header class="d-flex justify-content-between align-items-center mb-2">
             <h1 class="h5 m-0"><i class="bi bi-trophy-fill text-warning"></i> Pewniaczek Pro</h1>
@@ -42,7 +45,9 @@
         
         <div class="filter-section d-flex flex-wrap gap-3 align-items-center justify-content-between">
             <div class="d-flex gap-2 align-items-center">
-                <span class="text-muted small">Werdykt:</span>
+                <span class="text-muted small">Pokaż:</span>
+                <button class="btn btn-sm btn-outline-warning" onclick="toggleFilter('FAV', this)"><i class="bi bi-star-fill"></i> Fav</button>
+                <div class="vr bg-secondary mx-1"></div>
                 <button class="btn btn-sm btn-outline-success" onclick="toggleFilter('TAK!!', this)">TAK!!</button>
                 <button class="btn btn-sm btn-outline-success" onclick="toggleFilter('TAK', this)">TAK</button>
                 <button class="btn btn-sm btn-outline-warning" onclick="toggleFilter('MOŻE', this)">MOŻE</button>
@@ -50,7 +55,7 @@
             </div>
 
             <div class="d-flex gap-2 align-items-center border-start border-end border-secondary px-3">
-                <span class="text-muted small">Min. meczy:</span>
+                <span class="text-muted small">Min. meczów:</span>
                 <input type="number" id="minMatchesInput" class="form-control form-control-sm bg-dark text-light border-secondary" style="width: 60px;" value="0" min="0" onchange="applyFilters()">
                 <span class="text-muted small">w:</span>
                 <select id="rangeSelect" class="form-select form-select-sm bg-dark text-light border-secondary" style="width: 90px;" onchange="applyFilters()">
@@ -80,12 +85,14 @@
                         <th class="verdict-cell sortable" onclick="sortTable(5)">Werdykt</th>
                         <th class="text-center">Analiza</th>
                         <th class="text-end">Wynik</th>
+                        <th class="text-center" style="width: 40px;"><i class="bi bi-star-fill text-warning"></i></th>
                     </tr>
                 </thead>
                 <tbody id="matchesBody">
                     {% if not matches.empty %}
                     {% for index, row in matches.iterrows() %}
                     <tr class="match-row" 
+                        data-id="{{ row['id'] }}"
                         data-verdict="{{ row['verdict'] }}" 
                         data-status="{{ row['status'] }}"
                         data-h-l10="{{ row['h_l10'] }}" data-a-l10="{{ row['a_l10'] }}"
@@ -100,28 +107,60 @@
                         <td class="verdict-cell {{ row['verdict_class'] }}" data-val="{{ row['verdict'] }}">{{ row['verdict'] }}</td>
                         <td class="text-center"><a href="/analyze/{{ row['id'] }}" target="_blank" class="btn btn-outline-info btn-sm opacity-75 py-0 px-2"><i class="bi bi-graph-up"></i></a></td>
                         <td class="text-end font-monospace fw-bold">{{ row['formatted_score'] }}</td>
+                        <td class="text-center">
+                            <i class="bi bi-star text-secondary star-btn" onclick="toggleFavorite({{ row['id'] }}, this)"></i>
+                        </td>
                     </tr>
                     {% endfor %}
                     {% else %}
-                    <tr><td colspan="8" class="text-center py-5 text-muted">Brak danych. Poczekaj na pobranie bazy...</td></tr>
+                    <tr><td colspan="9" class="text-center py-5 text-muted">Brak danych. Poczekaj na pobranie bazy...</td></tr>
                     {% endif %}
                 </tbody>
             </table>
         </div>
     </div>
     <script>
-        let activeVerdict = 'ALL';
+        function getFavorites() { return JSON.parse(localStorage.getItem('pewniaczek_favs')) || []; }
         
+        function toggleFavorite(id, btn) {
+            let favs = getFavorites();
+            if (favs.includes(id)) {
+                favs = favs.filter(f => f !== id);
+                btn.classList.remove('bi-star-fill', 'text-warning');
+                btn.classList.add('bi-star', 'text-secondary');
+            } else {
+                favs.push(id);
+                btn.classList.remove('bi-star', 'text-secondary');
+                btn.classList.add('bi-star-fill', 'text-warning');
+            }
+            localStorage.setItem('pewniaczek_favs', JSON.stringify(favs));
+            if (activeVerdict === 'FAV') applyFilters();
+        }
+
+        function restoreFavorites() {
+            const favs = getFavorites();
+            document.querySelectorAll('.match-row').forEach(row => {
+                const id = parseInt(row.getAttribute('data-id'));
+                if (favs.includes(id)) {
+                    const btn = row.querySelector('.star-btn');
+                    if(btn) {
+                        btn.classList.remove('bi-star', 'text-secondary');
+                        btn.classList.add('bi-star-fill', 'text-warning');
+                    }
+                }
+            });
+        }
+
+        let activeVerdict = 'ALL';
         function toggleFilter(verdict, btn) {
             document.querySelectorAll('.btn-outline-success, .btn-outline-warning, .btn-light').forEach(b => b.classList.remove('active'));
             if (activeVerdict === verdict) { activeVerdict = 'ALL'; document.querySelector('button[onclick="resetFilters(this)"]').classList.add('active'); } 
             else { activeVerdict = verdict; btn.classList.add('active'); }
             applyFilters();
         }
-
         function resetFilters(btn) { 
             activeVerdict = 'ALL'; 
-            document.getElementById('minMatchesInput').value = 0; // Reset liczbowy
+            document.getElementById('minMatchesInput').value = 0; 
             document.querySelectorAll('.btn').forEach(b => b.classList.remove('active')); 
             btn.classList.add('active'); 
             applyFilters(); 
@@ -130,31 +169,21 @@
         function applyFilters() {
             const hideFinished = document.getElementById('hideFinishedSwitch').checked;
             const minMatches = parseInt(document.getElementById('minMatchesInput').value) || 0;
-            const range = document.getElementById('rangeSelect').value; // 10, 6, lub 3
-            
+            const range = document.getElementById('rangeSelect').value;
+            const favs = getFavorites();
             const rows = document.querySelectorAll('.match-row');
             let visible = 0;
-            
             rows.forEach(row => {
+                const id = parseInt(row.getAttribute('data-id'));
                 const v = row.getAttribute('data-verdict');
                 const s = row.getAttribute('data-status');
-                
-                // Pobieranie danych liczbowych z atrybutów wiersza
                 const hVal = parseInt(row.getAttribute('data-h-l' + range)) || 0;
                 const aVal = parseInt(row.getAttribute('data-a-l' + range)) || 0;
-
                 let show = true;
-                
-                // 1. Filtr werdyktu
-                if (activeVerdict !== 'ALL' && v !== activeVerdict) show = false;
-                
-                // 2. Filtr zakończonych
+                if (activeVerdict === 'FAV') { if (!favs.includes(id)) show = false; } 
+                else if (activeVerdict !== 'ALL' && v !== activeVerdict) { show = false; }
                 if (hideFinished && ['FT', 'AET', 'PEN'].includes(s)) show = false;
-                
-                // 3. Filtr liczbowy (Przywrócony)
-                // Pokazujemy, jeśli Gosp LUB Gość ma >= minMatches w wybranym zakresie
                 if (hVal < minMatches && aVal < minMatches) show = false;
-
                 row.style.display = show ? '' : 'none';
                 if(show) visible++;
             });
@@ -168,7 +197,7 @@
             rows.sort((a, b) => {
                 let valA = a.children[n].getAttribute('data-val') || a.children[n].innerText;
                 let valB = b.children[n].getAttribute('data-val') || b.children[n].innerText;
-                if (n === 5) {
+                if (n === 5) { 
                     const rank = {"TAK!!": 4, "TAK": 3, "MOŻE": 2, "-": 1};
                     valA = rank[valA] || 0; valB = rank[valB] || 0;
                     return (valA - valB) * sortDir * -1;
@@ -178,7 +207,6 @@
             rows.forEach(row => tbody.appendChild(row));
             sortDir *= -1;
         }
-
         function checkProgress() {
             fetch('/progress').then(r => r.json()).then(data => {
                 const el = document.getElementById('progressContainer');
@@ -192,6 +220,7 @@
                 } else { el.style.display = 'none'; }
             });
         }
+        restoreFavorites();
         setInterval(checkProgress, 5000); checkProgress();
     </script>
   </body>

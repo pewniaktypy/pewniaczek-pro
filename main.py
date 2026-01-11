@@ -17,7 +17,6 @@ API_KEY = "a9c00564195a59b4641909f9610c378d"
 HEADERS = {'x-rapidapi-host': "v3.football.api-sports.io", 'x-rapidapi-key': API_KEY}
 PL_TIMEZONE = pytz.timezone('Europe/Warsaw')
 DB_FILE = "pewniaczek.db"
-
 progress_status = {"total": 0, "current": 0, "is_running": False, "message": ""}
 
 def get_db_connection():
@@ -32,6 +31,7 @@ def init_db():
     conn.commit()
     conn.close()
 
+# --- LOGIKA STATYSTYK ---
 def process_goal_minutes(events, team_id):
     goals = []
     if not events: return []
@@ -101,6 +101,7 @@ def get_verdict(sh, sa):
     if sh['last_10'] >= 4 or sa['last_10'] >= 4: return "MOŻE", "text-warning"
     return "-", "text-secondary"
 
+# --- WORKER ---
 def perform_full_update_for_date(date_str):
     global progress_status
     progress_status["message"] = f"Pobieranie danych na {date_str}..."
@@ -118,14 +119,10 @@ def perform_full_update_for_date(date_str):
             progress_status["current"] = i + 1
             f = item['fixture']
             h_id, a_id = item['teams']['home']['id'], item['teams']['away']['id']
-            s_h = get_cached_stats(h_id)
-            if not s_h: 
-                s_h = calculate_team_stats(h_id)
-                if s_h: update_db_stats(h_id, s_h)
-            s_a = get_cached_stats(a_id)
-            if not s_a: 
-                s_a = calculate_team_stats(a_id)
-                if s_a: update_db_stats(a_id, s_a)
+            s_h = get_cached_stats(h_id) or calculate_team_stats(h_id)
+            if s_h: update_db_stats(h_id, s_h)
+            s_a = get_cached_stats(a_id) or calculate_team_stats(a_id)
+            if s_a: update_db_stats(a_id, s_a)
             v, vc = get_verdict(s_h, s_a)
             status = f['status']['short']
             is_live = status in ['1H','2H','HT','ET','LIVE']
@@ -133,12 +130,10 @@ def perform_full_update_for_date(date_str):
             score_str = "-"
             if item['goals']['home'] is not None: score_str = f"{item['goals']['home']}-{item['goals']['away']}"
             m_obj = {
-                'id': f['id'], 
-                'time': datetime.fromisoformat(f['date'].replace('Z','+00:00')).astimezone(PL_TIMEZONE).strftime('%H:%M'),
+                'id': f['id'], 'time': datetime.fromisoformat(f['date'].replace('Z','+00:00')).astimezone(PL_TIMEZONE).strftime('%H:%M'),
                 'league_country': f"{item['league']['name']} ({item['league']['country']})",
                 'match_name': f"{item['teams']['home']['name']} - {item['teams']['away']['name']}",
-                'home_id': h_id, 'away_id': a_id, 
-                'home_name': item['teams']['home']['name'], 'away_name': item['teams']['away']['name'],
+                'home_id': h_id, 'away_id': a_id, 'home_name': item['teams']['home']['name'], 'away_name': item['teams']['away']['name'],
                 'formatted_score': score_str, 'status': status, 'is_live': is_live,
                 'stat_h': f"{s_h['last_10']}/10" if s_h else "-", 'stat_a': f"{s_a['last_10']}/10" if s_a else "-",
                 'verdict': v, 'verdict_class': vc,
@@ -206,7 +201,21 @@ def index():
 
 @app.route('/analyze/<int:fixture_id>')
 def analyze(fixture_id):
-    return render_template('analysis.html', fixture_id=fixture_id)
+    # Logika analizy - tu pobieramy dane szczegółowe
+    try:
+        resp = requests.get(API_URL, headers=HEADERS, params={"ids": fixture_id})
+        if resp.status_code != 200: return "Błąd API", 500
+        data = resp.json().get('response', [])[0]
+        
+        # Pobranie H2H
+        h2h_resp = requests.get(API_URL, headers=HEADERS, params={"h2h": f"{data['teams']['home']['id']}-{data['teams']['away']['id']}"})
+        h2h = h2h_resp.json().get('response', []) if h2h_resp.status_code == 200 else []
+
+        # Możemy tu pobrać też ostatnie mecze obu drużyn, jeśli szablon tego wymaga
+        # Na razie przekazujemy podstawowe dane + H2H
+        return render_template('analysis.html', fixture_id=fixture_id, match=data, h2h=h2h)
+    except Exception as e:
+        return f"Błąd podczas analizy: {str(e)}", 500
 
 if __name__ == '__main__':
     init_db()
