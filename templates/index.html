@@ -89,9 +89,9 @@
                         data-id="{{ row['id'] }}"
                         data-verdict="{{ row['verdict'] }}" 
                         data-status="{{ row['status'] }}"
-                        data-h-l10="{{ row['h_l10'] }}" data-a-l10="{{ row['a_l10'] }}"
-                        data-h-l6="{{ row['h_l6'] }}" data-a-l6="{{ row['a_l6'] }}"
-                        data-h-l3="{{ row['h_l3'] }}" data-a-l3="{{ row['a_l3'] }}">
+                        data-h10="{{ row['h_l10'] }}" data-a10="{{ row['a_l10'] }}"
+                        data-h6="{{ row['h_l6'] }}" data-a6="{{ row['a_l6'] }}"
+                        data-h3="{{ row['h_l3'] }}" data-a3="{{ row['a_l3'] }}">
                         <td data-val="{{ row['time'] }}">{{ row['time'] }}{% if row['is_live'] %}<br><span class="badge live-badge rounded-pill" style="font-size:0.5em">LIVE</span>{% endif %}</td>
                         <td class="col-league" data-val="{{ row['league_country'] }}">{{ row['league_country'] }}</td>
                         <td>{{ row['match_name'] }}</td>
@@ -99,7 +99,7 @@
                         <td class="stat-cell">{{ row['stat_a'] }}</td>
                         <td class="verdict-cell {{ row['verdict_class'] }}" data-val="{{ row['verdict'] }}">{{ row['verdict'] }}</td>
                         <td class="text-center">
-                            <a href="javascript:void(0)" onclick="openAnalysisWindow('/analyze/{{ row['id'] }}');" class="btn btn-outline-info btn-sm opacity-75 py-0 px-2">
+                            <a href="/analyze/{{ row['id'] }}" onclick="window.open(this.href, 'A', 'width=1100,height=800'); return false;" class="btn btn-outline-info btn-sm opacity-75 py-0 px-2">
                                 <i class="bi bi-graph-up"></i>
                             </a>
                         </td>
@@ -109,81 +109,69 @@
                         </td>
                     </tr>
                     {% endfor %}
-                    {% else %}
-                    <tr><td colspan="9" class="text-center py-5 text-muted">Brak danych. Poczekaj na pobranie bazy...</td></tr>
                     {% endif %}
                 </tbody>
             </table>
         </div>
     </div>
     <script>
-        function openAnalysisWindow(url) {
-            const width = 1100;
-            const height = 800;
-            const left = (screen.width - width) / 2;
-            const top = (screen.height - height) / 2;
-            window.open(url, 'AnalysisWindow', `width=${width},height=${height},top=${top},left=${left},resizable=yes,scrollbars=yes`);
-        }
         function getFavorites() { return JSON.parse(localStorage.getItem('pewniaczek_favs')) || []; }
         function toggleFavorite(id, btn) {
             let favs = getFavorites();
-            if (favs.includes(id)) {
-                favs = favs.filter(f => f !== id);
-                btn.classList.remove('bi-star-fill', 'text-warning');
-                btn.classList.add('bi-star', 'text-secondary');
-            } else {
-                favs.push(id);
-                btn.classList.remove('bi-star', 'text-secondary');
-                btn.classList.add('bi-star-fill', 'text-warning');
-            }
+            if (favs.includes(id)) { favs = favs.filter(f => f !== id); btn.classList.replace('bi-star-fill', 'bi-star'); btn.classList.remove('text-warning'); }
+            else { favs.push(id); btn.classList.replace('bi-star', 'bi-star-fill'); btn.classList.add('text-warning'); }
             localStorage.setItem('pewniaczek_favs', JSON.stringify(favs));
-            if (activeVerdict === 'FAV') applyFilters();
+            applyFilters();
         }
         function restoreFavorites() {
             const favs = getFavorites();
             document.querySelectorAll('.match-row').forEach(row => {
-                const id = parseInt(row.getAttribute('data-id'));
-                if (favs.includes(id)) {
+                if (favs.includes(parseInt(row.getAttribute('data-id')))) {
                     const btn = row.querySelector('.star-btn');
-                    if(btn) { btn.classList.remove('bi-star', 'text-secondary'); btn.classList.add('bi-star-fill', 'text-warning'); }
+                    btn.classList.replace('bi-star', 'bi-star-fill'); btn.classList.add('text-warning');
                 }
             });
-        }
-        let activeVerdict = 'ALL';
-        function toggleFilter(verdict, btn) {
-            document.querySelectorAll('.btn-outline-success, .btn-outline-warning, .btn-light').forEach(b => b.classList.remove('active'));
-            if (activeVerdict === verdict) { activeVerdict = 'ALL'; document.querySelector('button[onclick="resetFilters(this)"]').classList.add('active'); } 
-            else { activeVerdict = verdict; btn.classList.add('active'); }
             applyFilters();
         }
-        function resetFilters(btn) { activeVerdict = 'ALL'; document.getElementById('minMatchesInput').value = 0; document.querySelectorAll('.btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); applyFilters(); }
+        let activeVerdict = 'ALL';
+        function toggleFilter(v, btn) {
+            document.querySelectorAll('.btn-outline-success, .btn-outline-warning, .btn-light').forEach(b => b.classList.remove('active'));
+            activeVerdict = (activeVerdict === v) ? 'ALL' : v;
+            if (activeVerdict !== 'ALL') btn.classList.add('active');
+            applyFilters();
+        }
+        function resetFilters(btn) { activeVerdict = 'ALL'; document.querySelectorAll('.btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); applyFilters(); }
         function applyFilters() {
-            const hideFinished = document.getElementById('hideFinishedSwitch').checked;
-            const minMatches = parseInt(document.getElementById('minMatchesInput').value) || 0;
-            const range = document.getElementById('rangeSelect').value;
+            const hideF = document.getElementById('hideFinishedSwitch').checked;
+            const minM = parseInt(document.getElementById('minMatchesInput').value) || 0;
+            const r = document.getElementById('rangeSelect').value;
             const favs = getFavorites();
-            const rows = document.querySelectorAll('.match-row');
+            const tbody = document.getElementById('matchesBody');
+            const rows = Array.from(tbody.querySelectorAll('.match-row'));
             let visible = 0;
             rows.forEach(row => {
-                const id = parseInt(row.getAttribute('data-id'));
-                const v = row.getAttribute('data-verdict');
-                const s = row.getAttribute('data-status');
-                const hVal = parseInt(row.getAttribute('data-h-l' + range)) || 0;
-                const aVal = parseInt(row.getAttribute('data-a-l' + range)) || 0;
                 let show = true;
-                if (activeVerdict === 'FAV') { if (!favs.includes(id)) show = false; } 
-                else if (activeVerdict !== 'ALL' && v !== activeVerdict) { show = false; }
-                if (hideFinished && ['FT', 'AET', 'PEN'].includes(s)) show = false;
-                if (hVal < minMatches && aVal < minMatches) show = false;
+                const id = parseInt(row.getAttribute('data-id'));
+                if (activeVerdict === 'FAV' && !favs.includes(id)) show = false;
+                else if (activeVerdict !== 'ALL' && activeVerdict !== 'FAV' && row.getAttribute('data-verdict') !== activeVerdict) show = false;
+                if (hideF && ['FT','AET','PEN'].includes(row.getAttribute('data-status'))) show = false;
+                if (parseInt(row.getAttribute('data-h'+r)) < minM && parseInt(row.getAttribute('data-a'+r)) < minM) show = false;
                 row.style.display = show ? '' : 'none';
                 if(show) visible++;
             });
+            rows.sort((a, b) => {
+                const favA = favs.includes(parseInt(a.getAttribute('data-id'))) ? 0 : 1;
+                const favB = favs.includes(parseInt(b.getAttribute('data-id'))) ? 0 : 1;
+                if (favA !== favB) return favA - favB;
+                return a.cells[0].innerText.localeCompare(b.cells[0].innerText);
+            });
+            rows.forEach(row => tbody.appendChild(row));
             document.getElementById('counterInfo').innerText = "Widoczne: " + visible;
         }
         let sortDir = 1;
         function sortTable(n) {
-            const tbody = document.getElementById("matchesBody");
-            const rows = Array.from(document.querySelectorAll('.match-row'));
+            const tbody = document.getElementById('matchesBody');
+            const rows = Array.from(tbody.querySelectorAll('.match-row'));
             rows.sort((a, b) => {
                 let valA = a.children[n].getAttribute('data-val') || a.children[n].innerText;
                 let valB = b.children[n].getAttribute('data-val') || b.children[n].innerText;
@@ -192,7 +180,7 @@
                     valA = rank[valA] || 0; valB = rank[valB] || 0;
                     return (valA - valB) * sortDir * -1;
                 }
-                if (valA < valB) return -1 * sortDir; if (valA > valB) return 1 * sortDir; return 0;
+                return valA.localeCompare(valB) * sortDir;
             });
             rows.forEach(row => tbody.appendChild(row));
             sortDir *= -1;
@@ -205,13 +193,10 @@
                     const p = Math.round((data.current / data.total) * 100) || 0;
                     document.getElementById('progressBar').style.width = p + '%';
                     document.getElementById('progressText').innerText = p + '%';
-                    document.getElementById('progressMsg').innerText = data.message || "Pobieranie...";
-                    if (p >= 100) setTimeout(() => location.reload(), 2000);
                 } else { el.style.display = 'none'; }
             });
         }
-        restoreFavorites();
-        setInterval(checkProgress, 5000); checkProgress();
+        restoreFavorites(); setInterval(checkProgress, 3000);
     </script>
   </body>
 </html>
