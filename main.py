@@ -13,7 +13,6 @@ import os
 try:
     from config import API_KEY
 except ImportError:
-    # Zabezpieczenie: jeśli brak pliku config, spróbuj pobrać ze zmiennych środowiskowych (dla bezpieczeństwa)
     API_KEY = os.environ.get("API_KEY", "BRAK_KLUCZA")
 
 app = Flask(__name__)
@@ -199,22 +198,58 @@ def lamaki():
     matches = [json.loads(r['data_json']) for r in rows]
     return render_template('lamaki.html', matches=pd.DataFrame(matches), today_date=now_pl.strftime('%Y-%m-%d'), tomorrow_date=(now_pl + timedelta(days=1)).strftime('%Y-%m-%d'), current_view=date_str)
 
-# --- PROMOCJE: DANE Z TWOJEGO EXCELA ---
+# --- PROMOCJE: TABELA Z KRZYŻYKAMI (X) ---
 @app.route('/promocje')
 def promocje():
     promos = [
-        {"name": "Superbet", "bonus": "3755 PLN", "code": "PEWNIAK", "offer_rating": 10, "limit_rating": 8, "url": "https://superbet.pl/rejestracja?bonus=PEWNIAK", "color": "#ef2f2f"},
-        {"name": "STS", "bonus": "660 PLN", "code": "PEWNIAK", "offer_rating": 10, "limit_rating": 6, "url": "https://record.stsaff.pl/_zgupHwwvAp7tzisnZM_GtWNd7ZgqdRLk/1/", "color": "#005ea2"},
-        {"name": "Fortuna", "bonus": "330 PLN (3x ZBR)", "code": "PEWNIAK", "offer_rating": 10, "limit_rating": 9, "url": "https://efortuna.pl", "color": "#ffc107", "text_dark": True},
-        {"name": "Betclic", "bonus": "Gra bez podatku + 50 PLN", "code": "PEWNIAKTYPY", "offer_rating": 9, "limit_rating": 5, "url": "https://betclic.pl/landing/partner?id=SWO_550_7A&zone=458", "color": "#d6001e"},
-        {"name": "Fuksiarz", "bonus": "Cashback 1000 PLN", "code": "PEWNIAK", "offer_rating": 7, "limit_rating": 8, "url": "https://fuksem.pl/pewniak", "color": "#c60c30"},
-        {"name": "Forbet", "bonus": "5250 PLN", "code": "PEWNIAKTYPY", "offer_rating": 8, "limit_rating": 7, "url": "https://www.iforbet.pl/rejestracja/040b9f4849?kod=PEWNIAKTYPY", "color": "#228b22"},
-        {"name": "Betfan", "bonus": "200% do 400 PLN", "code": "PEWNIAK", "offer_rating": 8, "limit_rating": 7, "url": "https://betfan.pl/lp/z4sfbmq4c4", "color": "#009640"},
-        {"name": "Etoto", "bonus": "777 PLN", "code": "PEWNIAK", "offer_rating": 7, "limit_rating": 6, "url": "https://rejestracja.etoto.pl/?btag=a_965b_417c_&siteid=965", "color": "#0053a0"},
-        {"name": "LVBET", "bonus": "2000 PLN + 20 PLN", "code": "PEWNIAK", "offer_rating": 9, "limit_rating": 6, "url": "https://m.lvbetpartners.pl/Redirect.aspx?mid=134&sid=1100&cid=&pid=&affid=656724", "color": "#ffda00", "text_dark": True},
-        {"name": "GoPlusBet", "bonus": "Cashback 500 PLN", "code": "PEWNIAK", "offer_rating": 6, "limit_rating": 7, "url": "https://www.goplusbet.pl/affiliates/?btag=pewniak", "color": "#000000"},
-        {"name": "ComeOn", "bonus": "Cashback 100 PLN", "code": "PEWNIAK", "offer_rating": 7, "limit_rating": 8, "url": "https://bit.ly/comeon-pewniak", "color": "#9bf00b", "text_dark": True},
-        {"name": "Betcris", "bonus": "Freebet", "code": "PEWNIAK", "offer_rating": 7, "limit_rating": 7, "url": "https://betcris.pl/affiliates/?btag=590141_l209166", "color": "#003e7e"}
+        {
+            "name": "Superbet", "code": "PEWNIAK", "url": "https://superbet.pl/rejestracja?bonus=PEWNIAK", "color": "#ef2f2f",
+            "deposit": "X", "freebet": "X", "risk_free": "X", "offer_rating": 10, "limit_rating": 8
+        },
+        {
+            "name": "STS", "code": "PEWNIAK", "url": "https://record.stsaff.pl/_zgupHwwvAp7tzisnZM_GtWNd7ZgqdRLk/1/", "color": "#005ea2",
+            "deposit": "X", "freebet": "X", "risk_free": "X", "offer_rating": 10, "limit_rating": 6
+        },
+        {
+            "name": "Fortuna", "code": "PEWNIAK", "url": "https://efortuna.pl", "color": "#ffc107", "text_dark": True,
+            "deposit": "", "freebet": "", "risk_free": "3", "offer_rating": 10, "limit_rating": 9
+        },
+        {
+            "name": "Betclic", "code": "PEWNIAKTYPY", "url": "https://betclic.pl/landing/partner?id=SWO_550_7A&zone=458", "color": "#d6001e",
+            "deposit": "", "freebet": "", "risk_free": "X", "offer_rating": 9, "limit_rating": 5
+        },
+        {
+            "name": "Fuksiarz", "code": "PEWNIAK", "url": "https://fuksem.pl/pewniak", "color": "#c60c30",
+            "deposit": "", "freebet": "", "risk_free": "X", "offer_rating": 7, "limit_rating": 8
+        },
+        {
+            "name": "Forbet", "code": "PEWNIAKTYPY", "url": "https://www.iforbet.pl/rejestracja/040b9f4849?kod=PEWNIAKTYPY", "color": "#228b22",
+            "deposit": "X", "freebet": "X", "risk_free": "X", "offer_rating": 8, "limit_rating": 7
+        },
+        {
+            "name": "Betfan", "code": "PEWNIAK", "url": "https://betfan.pl/lp/z4sfbmq4c4", "color": "#009640",
+            "deposit": "X", "freebet": "", "risk_free": "", "offer_rating": 8, "limit_rating": 7
+        },
+        {
+            "name": "Etoto", "code": "PEWNIAK", "url": "https://rejestracja.etoto.pl/?btag=a_965b_417c_&siteid=965", "color": "#0053a0",
+            "deposit": "X", "freebet": "", "risk_free": "", "offer_rating": 7, "limit_rating": 6
+        },
+        {
+            "name": "LVBET", "code": "PEWNIAK", "url": "https://m.lvbetpartners.pl/Redirect.aspx?mid=134&sid=1100&cid=&pid=&affid=656724", "color": "#ffda00", "text_dark": True,
+            "deposit": "X", "freebet": "X", "risk_free": "", "offer_rating": 9, "limit_rating": 6
+        },
+        {
+            "name": "GoPlusBet", "code": "PEWNIAK", "url": "https://www.goplusbet.pl/affiliates/?btag=pewniak", "color": "#000000",
+            "deposit": "", "freebet": "", "risk_free": "X", "offer_rating": 6, "limit_rating": 7
+        },
+        {
+            "name": "ComeOn", "code": "PEWNIAK", "url": "https://bit.ly/comeon-pewniak", "color": "#9bf00b", "text_dark": True,
+            "deposit": "", "freebet": "", "risk_free": "X", "offer_rating": 7, "limit_rating": 8
+        },
+        {
+            "name": "Betcris", "code": "PEWNIAK", "url": "https://betcris.pl/affiliates/?btag=590141_l209166", "color": "#003e7e",
+            "deposit": "", "freebet": "X", "risk_free": "", "offer_rating": 7, "limit_rating": 7
+        }
     ]
     return render_template('promocje.html', promos=promos)
 
