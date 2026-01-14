@@ -7,17 +7,19 @@ import time
 import threading
 import sqlite3
 import json
-import traceback
 import os
+
+# --- IMPORT KLUCZA Z PLIKU CONFIG.PY ---
+try:
+    from config import API_KEY
+except ImportError:
+    # Zabezpieczenie: jeśli brak pliku config, spróbuj pobrać ze zmiennych środowiskowych (dla bezpieczeństwa)
+    API_KEY = os.environ.get("API_KEY", "BRAK_KLUCZA")
 
 app = Flask(__name__)
 
 # --- KONFIGURACJA ---
 API_URL = "https://v3.football.api-sports.io/fixtures"
-# ▼▼▼ TU WKLEJ SWÓJ KLUCZ ▼▼▼
-API_KEY = "d1799adc4fcd859df9ef8e2ba96b28f5"
-# ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
-
 HEADERS = {'x-rapidapi-host': "v3.football.api-sports.io", 'x-rapidapi-key': API_KEY}
 PL_TIMEZONE = pytz.timezone('Europe/Warsaw')
 DB_FILE = "pewniaczek.db"
@@ -49,6 +51,7 @@ def calculate_smart_stats(team_id, target_type):
         resp = requests.get(API_URL, headers=HEADERS, params={"team": team_id, "last": 40})
         if resp.status_code != 200: return {'last_10': 0, 'last_6': 0, 'last_3': 0}
         all_matches = resp.json().get('response', [])
+        
         filtered = []
         for m in all_matches:
             l_info = m.get('league', {})
@@ -58,10 +61,13 @@ def calculate_smart_stats(team_id, target_type):
             elif target_type == 'Cup' and m_type == 'Cup' and not is_f: filtered.append(m)
             elif target_type == 'League' and m_type == 'League' and not is_f: filtered.append(m)
             if len(filtered) >= 10: break
+            
         if not filtered: return {'last_10': 0, 'last_6': 0, 'last_3': 0}
+
         ids = "-".join([str(m['fixture']['id']) for m in filtered])
         det_resp = requests.get(API_URL, headers=HEADERS, params={"ids": ids})
         details_map = {d['fixture']['id']: d for d in det_resp.json().get('response', [])} if det_resp.status_code == 200 else {}
+
         stats = {'last_10': 0, 'last_6': 0, 'last_3': 0}
         for i, m in enumerate(filtered):
             d = details_map.get(m['fixture']['id'])
@@ -90,11 +96,13 @@ def get_or_calculate_lamak(team_id, conn):
                 ht = s.get('halftime', {})
                 ft = s.get('fulltime', {})
                 if ht.get('home') is None or ft.get('home') is None: continue
-                h_ht, a_ht, h_ft, a_ft = ht['home'], ht['away'], ft['home'], ft['away']
+                h_ht, a_ht = ht['home'], ht['away']
+                h_ft, a_ft = ft['home'], ft['away']
                 if (h_ht > a_ht and h_ft < a_ft) or (a_ht > h_ht and h_ft > a_ft): lamak_count += 1
             percent = round((lamak_count / total) * 100) if total > 0 else 0
             result_text = f"{lamak_count} ({percent}%)"
-        conn.execute("INSERT OR REPLACE INTO team_stats (team_id, lamak_text, last_updated) VALUES (?, ?, ?)", (team_id, result_text, datetime.now().strftime('%Y-%m-%d')))
+        conn.execute("INSERT OR REPLACE INTO team_stats (team_id, lamak_text, last_updated) VALUES (?, ?, ?)", 
+                     (team_id, result_text, datetime.now().strftime('%Y-%m-%d')))
         conn.commit()
         return result_text
     except: return "?"
@@ -105,24 +113,33 @@ def worker_task():
     while True:
         try:
             now_pl = datetime.now(PL_TIMEZONE)
-            dates = [now_pl.strftime('%Y-%m-%d')]
+            dates = [now_pl.strftime('%Y-%m-%d')] 
             for date_str in dates:
                 progress_status["is_running"] = True
-                progress_status["message"] = f"Pobieranie: {date_str}"
+                progress_status["message"] = f"Pobieranie listy: {date_str}"
                 resp = requests.get(API_URL, headers=HEADERS, params={"date": date_str})
                 if resp.status_code != 200: continue
                 data = resp.json().get('response', [])
                 progress_status["total"] = len(data)
                 conn = get_db_connection()
+                
                 for i, item in enumerate(data):
                     try:
                         progress_status["current"] = i + 1
                         f_id = item['fixture']['id']
                         existing = conn.execute("SELECT data_json FROM matches WHERE id=?", (f_id,)).fetchone()
-                        saved = json.loads(existing[0]) if existing and json.loads(existing[0]).get('lamak_h') else None
+                        saved = None
+                        if existing:
+                            try:
+                                obj = json.loads(existing[0])
+                                if obj.get('lamak_h'): saved = obj
+                            except: pass
                         
                         if saved:
-                            s_h, s_a, l_h, l_a, v, vc = {'last_10': saved['h_l10'], 'last_6': saved['h_l6'], 'last_3': saved['h_l3']}, {'last_10': saved['a_l10'], 'last_6': saved['a_l6'], 'last_3': saved['a_l3']}, saved.get('lamak_h',''), saved.get('lamak_a',''), saved['verdict'], saved['verdict_class']
+                            s_h = {'last_10': saved['h_l10'], 'last_6': saved['h_l6'], 'last_3': saved['h_l3']}
+                            s_a = {'last_10': saved['a_l10'], 'last_6': saved['a_l6'], 'last_3': saved['a_l3']}
+                            l_h, l_a = saved.get('lamak_h', '0 (0%)'), saved.get('lamak_a', '0 (0%)')
+                            v, vc = saved['verdict'], saved['verdict_class']
                         else:
                             l_info = item.get('league', {})
                             m_type = 'Friendly' if 'Friendly' in l_info.get('name','') else ('Cup' if l_info.get('type') == 'Cup' else 'League')
@@ -136,18 +153,22 @@ def worker_task():
                             elif s_h['last_10'] >= 4 or s_a['last_10'] >= 4: v, vc = "MOŻE", "text-warning"
 
                         m_obj = {
-                            'id': f_id, 'time': datetime.fromisoformat(item['fixture']['date'].replace('Z','+00:00')).astimezone(PL_TIMEZONE).strftime('%H:%M'),
+                            'id': f_id,
+                            'time': datetime.fromisoformat(item['fixture']['date'].replace('Z','+00:00')).astimezone(PL_TIMEZONE).strftime('%H:%M'),
                             'league_country': f"{item['league'].get('name')} ({item['league'].get('country')})",
                             'match_name': f"{item['teams']['home']['name']} - {item['teams']['away']['name']}",
                             'home_name': item['teams']['home']['name'], 'away_name': item['teams']['away']['name'],
                             'stat_h': f"{s_h['last_10']}/10", 'stat_a': f"{s_a['last_10']}/10",
-                            'lamak_h': l_h, 'lamak_a': l_a, 'verdict': v, 'verdict_class': vc,
-                            'status': item['fixture']['status']['short'], 'is_live': item['fixture']['status']['short'] in ['1H','2H','HT','LIVE','ET'],
+                            'lamak_h': l_h, 'lamak_a': l_a,
+                            'verdict': v, 'verdict_class': vc,
+                            'status': item['fixture']['status']['short'],
+                            'is_live': item['fixture']['status']['short'] in ['1H','2H','HT','LIVE','ET'],
                             'h_l10': s_h['last_10'], 'h_l6': s_h['last_6'], 'h_l3': s_h['last_3'],
                             'a_l10': s_a['last_10'], 'a_l6': s_a['last_6'], 'a_l3': s_a['last_3'],
                             'formatted_score': f"{item['goals']['home']}-{item['goals']['away']}" if item['goals']['home'] is not None else "vs"
                         }
-                        conn.execute('INSERT OR REPLACE INTO matches (id, date_str, timestamp, data_json) VALUES (?,?,?,?)', (f_id, date_str, item['fixture']['timestamp'], json.dumps(m_obj)))
+                        conn.execute('INSERT OR REPLACE INTO matches (id, date_str, timestamp, data_json) VALUES (?,?,?,?)', 
+                                     (f_id, date_str, item['fixture']['timestamp'], json.dumps(m_obj)))
                         conn.commit()
                     except: pass
                 conn.close()
@@ -178,58 +199,22 @@ def lamaki():
     matches = [json.loads(r['data_json']) for r in rows]
     return render_template('lamaki.html', matches=pd.DataFrame(matches), today_date=now_pl.strftime('%Y-%m-%d'), tomorrow_date=(now_pl + timedelta(days=1)).strftime('%Y-%m-%d'), current_view=date_str)
 
-# --- ZAKTUALIZOWANA TRASA: PROMOCJE ---
+# --- PROMOCJE: DANE Z TWOJEGO EXCELA ---
 @app.route('/promocje')
 def promocje():
     promos = [
-        {
-            "name": "Superbet", "bonus": "3755 PLN", "code": "PEWNIAK", 
-            "offer_rating": 10, "limit_rating": 8, "url": "https://superbet.pl/rejestracja?bonus=PEWNIAK", "color": "#ef2f2f"
-        },
-        {
-            "name": "Betclic", "bonus": "Gra bez podatku + Zakład bez ryzyka 50 PLN", "code": "PEWNIAKTYPY", 
-            "offer_rating": 9, "limit_rating": 5, "url": "https://betclic.pl/landing/partner?id=SWO_550_7A&zone=458", "color": "#d6001e"
-        },
-        {
-            "name": "STS", "bonus": "660 PLN", "code": "PEWNIAK", 
-            "offer_rating": 10, "limit_rating": 6, "url": "https://record.stsaff.pl/_zgupHwwvAp7tzisnZM_GtWNd7ZgqdRLk/1/", "color": "#005ea2"
-        },
-        {
-            "name": "Fortuna", "bonus": "330 PLN (3x Zakład Bez Ryzyka)", "code": "PEWNIAK", 
-            "offer_rating": 10, "limit_rating": 9, "url": "https://efortuna.pl", "color": "#ffc107", "text_dark": True
-        },
-        {
-            "name": "Fuksiarz", "bonus": "Cashback bez limitu 1000 PLN", "code": "PEWNIAK", 
-            "offer_rating": 7, "limit_rating": 8, "url": "https://fuksem.pl/pewniak", "color": "#c60c30"
-        },
-        {
-            "name": "Betfan", "bonus": "200% do 400 PLN", "code": "PEWNIAK", 
-            "offer_rating": 8, "limit_rating": 7, "url": "https://betfan.pl/lp/z4sfbmq4c4", "color": "#009640"
-        },
-        {
-            "name": "Etoto", "bonus": "777 PLN", "code": "PEWNIAK", 
-            "offer_rating": 7, "limit_rating": 6, "url": "https://rejestracja.etoto.pl/?btag=a_965b_417c_&siteid=965", "color": "#0053a0"
-        },
-        {
-            "name": "LVBET", "bonus": "2000 PLN + 20 PLN", "code": "PEWNIAK", 
-            "offer_rating": 9, "limit_rating": 6, "url": "https://m.lvbetpartners.pl/Redirect.aspx?mid=134&sid=1100&cid=&pid=&affid=656724", "color": "#ffda00", "text_dark": True
-        },
-        {
-            "name": "Forbet", "bonus": "5250 PLN", "code": "PEWNIAKTYPY", 
-            "offer_rating": 8, "limit_rating": 7, "url": "https://www.iforbet.pl/rejestracja/040b9f4849?kod=PEWNIAKTYPY", "color": "#228b22"
-        },
-        {
-            "name": "GoPlusBet", "bonus": "Cashback 500 PLN", "code": "PEWNIAK", 
-            "offer_rating": 6, "limit_rating": 7, "url": "https://www.goplusbet.pl/affiliates/?btag=pewniak", "color": "#000000"
-        },
-        {
-            "name": "ComeOn", "bonus": "Cashback 100 PLN", "code": "PEWNIAK", 
-            "offer_rating": 7, "limit_rating": 8, "url": "https://bit.ly/comeon-pewniak", "color": "#9bf00b", "text_dark": True
-        },
-        {
-            "name": "Betcris", "bonus": "Freebet", "code": "PEWNIAK", 
-            "offer_rating": 7, "limit_rating": 7, "url": "https://betcris.pl/affiliates/?btag=590141_l209166", "color": "#003e7e"
-        }
+        {"name": "Superbet", "bonus": "3755 PLN", "code": "PEWNIAK", "offer_rating": 10, "limit_rating": 8, "url": "https://superbet.pl/rejestracja?bonus=PEWNIAK", "color": "#ef2f2f"},
+        {"name": "STS", "bonus": "660 PLN", "code": "PEWNIAK", "offer_rating": 10, "limit_rating": 6, "url": "https://record.stsaff.pl/_zgupHwwvAp7tzisnZM_GtWNd7ZgqdRLk/1/", "color": "#005ea2"},
+        {"name": "Fortuna", "bonus": "330 PLN (3x ZBR)", "code": "PEWNIAK", "offer_rating": 10, "limit_rating": 9, "url": "https://efortuna.pl", "color": "#ffc107", "text_dark": True},
+        {"name": "Betclic", "bonus": "Gra bez podatku + 50 PLN", "code": "PEWNIAKTYPY", "offer_rating": 9, "limit_rating": 5, "url": "https://betclic.pl/landing/partner?id=SWO_550_7A&zone=458", "color": "#d6001e"},
+        {"name": "Fuksiarz", "bonus": "Cashback 1000 PLN", "code": "PEWNIAK", "offer_rating": 7, "limit_rating": 8, "url": "https://fuksem.pl/pewniak", "color": "#c60c30"},
+        {"name": "Forbet", "bonus": "5250 PLN", "code": "PEWNIAKTYPY", "offer_rating": 8, "limit_rating": 7, "url": "https://www.iforbet.pl/rejestracja/040b9f4849?kod=PEWNIAKTYPY", "color": "#228b22"},
+        {"name": "Betfan", "bonus": "200% do 400 PLN", "code": "PEWNIAK", "offer_rating": 8, "limit_rating": 7, "url": "https://betfan.pl/lp/z4sfbmq4c4", "color": "#009640"},
+        {"name": "Etoto", "bonus": "777 PLN", "code": "PEWNIAK", "offer_rating": 7, "limit_rating": 6, "url": "https://rejestracja.etoto.pl/?btag=a_965b_417c_&siteid=965", "color": "#0053a0"},
+        {"name": "LVBET", "bonus": "2000 PLN + 20 PLN", "code": "PEWNIAK", "offer_rating": 9, "limit_rating": 6, "url": "https://m.lvbetpartners.pl/Redirect.aspx?mid=134&sid=1100&cid=&pid=&affid=656724", "color": "#ffda00", "text_dark": True},
+        {"name": "GoPlusBet", "bonus": "Cashback 500 PLN", "code": "PEWNIAK", "offer_rating": 6, "limit_rating": 7, "url": "https://www.goplusbet.pl/affiliates/?btag=pewniak", "color": "#000000"},
+        {"name": "ComeOn", "bonus": "Cashback 100 PLN", "code": "PEWNIAK", "offer_rating": 7, "limit_rating": 8, "url": "https://bit.ly/comeon-pewniak", "color": "#9bf00b", "text_dark": True},
+        {"name": "Betcris", "bonus": "Freebet", "code": "PEWNIAK", "offer_rating": 7, "limit_rating": 7, "url": "https://betcris.pl/affiliates/?btag=590141_l209166", "color": "#003e7e"}
     ]
     return render_template('promocje.html', promos=promos)
 
@@ -237,7 +222,9 @@ def promocje():
 def analyze(fixture_id):
     try:
         resp = requests.get(API_URL, headers=HEADERS, params={"ids": fixture_id})
-        match_data = resp.json().get('response', [])[0]
+        data = resp.json().get('response', [])
+        if not data: return "Brak danych", 404
+        match_data = data[0]
         h2h_resp = requests.get(API_URL, headers=HEADERS, params={"h2h": f"{match_data['teams']['home']['id']}-{match_data['teams']['away']['id']}"})
         return render_template('analysis.html', match=match_data, h2h=h2h_resp.json().get('response', []), stats_home={}, stats_away={}, history_home=[], history_away=[])
     except: return "Błąd"
