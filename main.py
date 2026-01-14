@@ -198,57 +198,49 @@ def lamaki():
     matches = [json.loads(r['data_json']) for r in rows]
     return render_template('lamaki.html', matches=pd.DataFrame(matches), today_date=now_pl.strftime('%Y-%m-%d'), tomorrow_date=(now_pl + timedelta(days=1)).strftime('%Y-%m-%d'), current_view=date_str)
 
-# --- PROMOCJE: TABELA Z KRZYŻYKAMI (X) ---
+# --- ZAKTUALIZOWANA TRASA: PROMOCJE (MODERN) ---
 @app.route('/promocje')
 def promocje():
     promos = [
         {
             "name": "Superbet", "code": "PEWNIAK", "url": "https://superbet.pl/rejestracja?bonus=PEWNIAK", "color": "#ef2f2f",
-            "deposit": "X", "freebet": "X", "risk_free": "X", "offer_rating": 10, "limit_rating": 8
+            "deposit": "X", "freebet": "X", "risk_free": "X", "bonus_val": "3755 PLN"
         },
         {
             "name": "STS", "code": "PEWNIAK", "url": "https://record.stsaff.pl/_zgupHwwvAp7tzisnZM_GtWNd7ZgqdRLk/1/", "color": "#005ea2",
-            "deposit": "X", "freebet": "X", "risk_free": "X", "offer_rating": 10, "limit_rating": 6
+            "deposit": "X", "freebet": "X", "risk_free": "X", "bonus_val": "660 PLN"
         },
         {
             "name": "Fortuna", "code": "PEWNIAK", "url": "https://efortuna.pl", "color": "#ffc107", "text_dark": True,
-            "deposit": "", "freebet": "", "risk_free": "3", "offer_rating": 10, "limit_rating": 9
+            "deposit": "", "freebet": "", "risk_free": "3", "bonus_val": "330 PLN"
         },
         {
             "name": "Betclic", "code": "PEWNIAKTYPY", "url": "https://betclic.pl/landing/partner?id=SWO_550_7A&zone=458", "color": "#d6001e",
-            "deposit": "", "freebet": "", "risk_free": "X", "offer_rating": 9, "limit_rating": 5
+            "deposit": "", "freebet": "", "risk_free": "X", "bonus_val": "Bez Podatku"
         },
         {
             "name": "Fuksiarz", "code": "PEWNIAK", "url": "https://fuksem.pl/pewniak", "color": "#c60c30",
-            "deposit": "", "freebet": "", "risk_free": "X", "offer_rating": 7, "limit_rating": 8
+            "deposit": "", "freebet": "", "risk_free": "X", "bonus_val": "1000 PLN"
         },
         {
             "name": "Forbet", "code": "PEWNIAKTYPY", "url": "https://www.iforbet.pl/rejestracja/040b9f4849?kod=PEWNIAKTYPY", "color": "#228b22",
-            "deposit": "X", "freebet": "X", "risk_free": "X", "offer_rating": 8, "limit_rating": 7
+            "deposit": "X", "freebet": "X", "risk_free": "X", "bonus_val": "5250 PLN"
         },
         {
             "name": "Betfan", "code": "PEWNIAK", "url": "https://betfan.pl/lp/z4sfbmq4c4", "color": "#009640",
-            "deposit": "X", "freebet": "", "risk_free": "", "offer_rating": 8, "limit_rating": 7
+            "deposit": "X", "freebet": "", "risk_free": "", "bonus_val": "200% do 400"
         },
         {
             "name": "Etoto", "code": "PEWNIAK", "url": "https://rejestracja.etoto.pl/?btag=a_965b_417c_&siteid=965", "color": "#0053a0",
-            "deposit": "X", "freebet": "", "risk_free": "", "offer_rating": 7, "limit_rating": 6
+            "deposit": "X", "freebet": "", "risk_free": "", "bonus_val": "777 PLN"
         },
         {
             "name": "LVBET", "code": "PEWNIAK", "url": "https://m.lvbetpartners.pl/Redirect.aspx?mid=134&sid=1100&cid=&pid=&affid=656724", "color": "#ffda00", "text_dark": True,
-            "deposit": "X", "freebet": "X", "risk_free": "", "offer_rating": 9, "limit_rating": 6
-        },
-        {
-            "name": "GoPlusBet", "code": "PEWNIAK", "url": "https://www.goplusbet.pl/affiliates/?btag=pewniak", "color": "#000000",
-            "deposit": "", "freebet": "", "risk_free": "X", "offer_rating": 6, "limit_rating": 7
+            "deposit": "X", "freebet": "X", "risk_free": "", "bonus_val": "2020 PLN"
         },
         {
             "name": "ComeOn", "code": "PEWNIAK", "url": "https://bit.ly/comeon-pewniak", "color": "#9bf00b", "text_dark": True,
-            "deposit": "", "freebet": "", "risk_free": "X", "offer_rating": 7, "limit_rating": 8
-        },
-        {
-            "name": "Betcris", "code": "PEWNIAK", "url": "https://betcris.pl/affiliates/?btag=590141_l209166", "color": "#003e7e",
-            "deposit": "", "freebet": "X", "risk_free": "", "offer_rating": 7, "limit_rating": 7
+            "deposit": "", "freebet": "", "risk_free": "X", "bonus_val": "100 PLN"
         }
     ]
     return render_template('promocje.html', promos=promos)
