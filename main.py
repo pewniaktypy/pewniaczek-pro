@@ -14,7 +14,7 @@ app = Flask(__name__)
 
 # --- KONFIGURACJA ---
 API_URL = "https://v3.football.api-sports.io/fixtures"
-API_KEY = "a9c00564195a59b4641909f9610c378d"
+API_KEY = "d1799adc4fcd859df9ef8e2ba96b28f5"
 HEADERS = {'x-rapidapi-host': "v3.football.api-sports.io", 'x-rapidapi-key': API_KEY}
 PL_TIMEZONE = pytz.timezone('Europe/Warsaw')
 DB_FILE = "pewniaczek.db"

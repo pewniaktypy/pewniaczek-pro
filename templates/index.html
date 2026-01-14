@@ -19,6 +19,8 @@
         .filter-section { background-color: #1e1e1e; border-bottom: 1px solid #333; padding: 10px 15px; margin-bottom: 15px; border-radius: 6px; }
         .star-btn { cursor: pointer; font-size: 1.1rem; transition: transform 0.2s; }
         .star-btn:hover { transform: scale(1.2); }
+        .nav-pills .nav-link.active { background-color: #0d6efd; } 
+        .nav-pills .nav-link { color: #aaa; }
     </style>
   </head>
   <body>
@@ -33,14 +35,24 @@
             </div>
         </div>
     </div>
+
     <div class="container-fluid py-3 px-3">
-        <header class="d-flex justify-content-between align-items-center mb-2">
-            <h1 class="h5 m-0"><i class="bi bi-trophy-fill text-warning"></i> Pewniaczek Pro</h1>
-            <div class="btn-group">
+        <header class="d-flex flex-column align-items-center mb-3">
+            <h1 class="h5 mb-2"><i class="bi bi-trophy-fill text-warning"></i> Pewniaczek Pro</h1>
+            <ul class="nav nav-pills p-1 bg-dark rounded-pill border border-secondary" style="font-size: 0.9rem;">
+                <li class="nav-item"><a href="/" class="nav-link active">Mecze</a></li>
+                <li class="nav-item"><a href="/lamaki" class="nav-link">Łamaki (1/2)</a></li>
+                <li class="nav-item"><a href="/promocje" class="nav-link">Promocje</a></li>
+            </ul>
+        </header>
+
+        <div class="d-flex justify-content-between align-items-center mb-2">
+             <div class="btn-group">
                 <a href="/?date={{ today_date }}" class="btn btn-sm btn-{{ 'primary' if current_view == today_date else 'outline-secondary' }}">DZIŚ</a>
                 <a href="/?date={{ tomorrow_date }}" class="btn btn-sm btn-{{ 'primary' if current_view == tomorrow_date else 'outline-secondary' }}">JUTRO</a>
             </div>
-        </header>
+        </div>
+
         <div class="filter-section d-flex flex-wrap gap-3 align-items-center justify-content-between">
             <div class="d-flex gap-2 align-items-center">
                 <span class="text-muted small">Pokaż:</span>
@@ -141,6 +153,7 @@
             applyFilters();
         }
         function resetFilters(btn) { activeVerdict = 'ALL'; document.querySelectorAll('.btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); applyFilters(); }
+        
         function applyFilters() {
             const hideF = document.getElementById('hideFinishedSwitch').checked;
             const minM = parseInt(document.getElementById('minMatchesInput').value) || 0;
@@ -149,16 +162,51 @@
             const tbody = document.getElementById('matchesBody');
             const rows = Array.from(tbody.querySelectorAll('.match-row'));
             let visible = 0;
+            
+            const now = new Date(); // Pobierz aktualny czas raz
+
             rows.forEach(row => {
                 let show = true;
                 const id = parseInt(row.getAttribute('data-id'));
+                
+                // Filtry Werdyktu i Ulubionych
                 if (activeVerdict === 'FAV' && !favs.includes(id)) show = false;
                 else if (activeVerdict !== 'ALL' && activeVerdict !== 'FAV' && row.getAttribute('data-verdict') !== activeVerdict) show = false;
-                if (hideF && ['FT','AET','PEN'].includes(row.getAttribute('data-status'))) show = false;
+                
+                // Filtr "Ukryj Zakończone" (Rozbudowany: Status + Czas)
+                if (hideF) {
+                    const status = row.getAttribute('data-status');
+                    
+                    // 1. Sprawdź status z API
+                    if (['FT','AET','PEN'].includes(status)) show = false;
+                    
+                    // 2. Sprawdź czy mecz jest "stary" (> 2.5h)
+                    // Pobieramy godzinę z komórki, np. "13:30"
+                    const timeVal = row.cells[0].getAttribute('data-val'); 
+                    if (timeVal && timeVal.includes(':') && show) { // Tylko jeśli jeszcze nie ukryty
+                        const [h, m] = timeVal.split(':').map(Number);
+                        const matchDate = new Date();
+                        matchDate.setHours(h, m, 0, 0);
+                        
+                        // Jeśli mecz był np. wczoraj (a patrzymy na listę dziś), to różnica będzie ogromna, więc OK
+                        // Jeśli mecz jest jutro, różnica będzie ujemna, więc OK
+                        
+                        // Interesuje nas tylko dzisiejszy dzień (bo lista jest per dzień)
+                        // 2.5 godziny = 150 minut * 60 * 1000 ms
+                        const diff = now - matchDate;
+                        if (diff > (150 * 60 * 1000)) {
+                            show = false; // Minęło 2.5h od gwizdka
+                        }
+                    }
+                }
+
+                // Filtr Statystyk
                 if (parseInt(row.getAttribute('data-h'+r)) < minM && parseInt(row.getAttribute('data-a'+r)) < minM) show = false;
+                
                 row.style.display = show ? '' : 'none';
                 if(show) visible++;
             });
+
             rows.sort((a, b) => {
                 const favA = favs.includes(parseInt(a.getAttribute('data-id'))) ? 0 : 1;
                 const favB = favs.includes(parseInt(b.getAttribute('data-id'))) ? 0 : 1;
@@ -168,6 +216,7 @@
             rows.forEach(row => tbody.appendChild(row));
             document.getElementById('counterInfo').innerText = "Widoczne: " + visible;
         }
+
         let sortDir = 1;
         function sortTable(n) {
             const tbody = document.getElementById('matchesBody');
@@ -193,6 +242,8 @@
                     const p = Math.round((data.current / data.total) * 100) || 0;
                     document.getElementById('progressBar').style.width = p + '%';
                     document.getElementById('progressText').innerText = p + '%';
+                    document.getElementById('progressMsg').innerText = data.message || "Pobieranie...";
+                    if (p >= 100) setTimeout(() => location.reload(), 2000);
                 } else { el.style.display = 'none'; }
             });
         }
