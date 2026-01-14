@@ -12,7 +12,6 @@
         .live-badge { animation: pulse 1.5s infinite; background-color: #dc3545; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
         th.sortable { cursor: pointer; text-decoration: underline dotted; }
-        th.sortable:hover { color: #fff; }
         .col-league { width: 15%; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .stat-cell { font-size: 0.8rem; font-weight: bold; text-align: center; width: 8%; color: #aaa; }
         .verdict-cell { font-weight: bold; text-align: center; width: 10%; }
@@ -55,7 +54,6 @@
 
         <div class="filter-section d-flex flex-wrap gap-3 align-items-center justify-content-between">
             <div class="d-flex gap-2 align-items-center">
-                <span class="text-muted small">Pokaż:</span>
                 <button class="btn btn-sm btn-outline-warning" onclick="toggleFilter('FAV', this)"><i class="bi bi-star-fill"></i> Fav</button>
                 <div class="vr bg-secondary mx-1"></div>
                 <button class="btn btn-sm btn-outline-success" onclick="toggleFilter('TAK!!', this)">TAK!!</button>
@@ -111,9 +109,7 @@
                         <td class="stat-cell">{{ row['stat_a'] }}</td>
                         <td class="verdict-cell {{ row['verdict_class'] }}" data-val="{{ row['verdict'] }}">{{ row['verdict'] }}</td>
                         <td class="text-center">
-                            <a href="/analyze/{{ row['id'] }}" onclick="window.open(this.href, 'A', 'width=1100,height=800'); return false;" class="btn btn-outline-info btn-sm opacity-75 py-0 px-2">
-                                <i class="bi bi-graph-up"></i>
-                            </a>
+                            <a href="/analyze/{{ row['id'] }}" onclick="window.open(this.href, 'A', 'width=1100,height=800'); return false;" class="btn btn-outline-info btn-sm opacity-75 py-0 px-2"><i class="bi bi-graph-up"></i></a>
                         </td>
                         <td class="text-end font-monospace fw-bold">{{ row['formatted_score'] }}</td>
                         <td class="text-center">
@@ -159,80 +155,37 @@
             const minM = parseInt(document.getElementById('minMatchesInput').value) || 0;
             const r = document.getElementById('rangeSelect').value;
             const favs = getFavorites();
-            const tbody = document.getElementById('matchesBody');
-            const rows = Array.from(tbody.querySelectorAll('.match-row'));
+            const rows = Array.from(document.getElementById('matchesBody').querySelectorAll('.match-row'));
             let visible = 0;
-            
-            const now = new Date(); // Pobierz aktualny czas raz
+            const now = new Date();
 
             rows.forEach(row => {
                 let show = true;
                 const id = parseInt(row.getAttribute('data-id'));
-                
-                // Filtry Werdyktu i Ulubionych
                 if (activeVerdict === 'FAV' && !favs.includes(id)) show = false;
                 else if (activeVerdict !== 'ALL' && activeVerdict !== 'FAV' && row.getAttribute('data-verdict') !== activeVerdict) show = false;
                 
-                // Filtr "Ukryj Zakończone" (Rozbudowany: Status + Czas)
                 if (hideF) {
                     const status = row.getAttribute('data-status');
-                    
-                    // 1. Sprawdź status z API
                     if (['FT','AET','PEN'].includes(status)) show = false;
-                    
-                    // 2. Sprawdź czy mecz jest "stary" (> 2.5h)
-                    // Pobieramy godzinę z komórki, np. "13:30"
                     const timeVal = row.cells[0].getAttribute('data-val'); 
-                    if (timeVal && timeVal.includes(':') && show) { // Tylko jeśli jeszcze nie ukryty
+                    if (timeVal && timeVal.includes(':') && show) {
                         const [h, m] = timeVal.split(':').map(Number);
-                        const matchDate = new Date();
-                        matchDate.setHours(h, m, 0, 0);
-                        
-                        // Jeśli mecz był np. wczoraj (a patrzymy na listę dziś), to różnica będzie ogromna, więc OK
-                        // Jeśli mecz jest jutro, różnica będzie ujemna, więc OK
-                        
-                        // Interesuje nas tylko dzisiejszy dzień (bo lista jest per dzień)
-                        // 2.5 godziny = 150 minut * 60 * 1000 ms
-                        const diff = now - matchDate;
-                        if (diff > (150 * 60 * 1000)) {
-                            show = false; // Minęło 2.5h od gwizdka
-                        }
+                        const matchDate = new Date(); matchDate.setHours(h, m, 0, 0);
+                        if ((now - matchDate) > (150 * 60 * 1000)) show = false;
                     }
                 }
-
-                // Filtr Statystyk
                 if (parseInt(row.getAttribute('data-h'+r)) < minM && parseInt(row.getAttribute('data-a'+r)) < minM) show = false;
-                
                 row.style.display = show ? '' : 'none';
                 if(show) visible++;
             });
-
-            rows.sort((a, b) => {
-                const favA = favs.includes(parseInt(a.getAttribute('data-id'))) ? 0 : 1;
-                const favB = favs.includes(parseInt(b.getAttribute('data-id'))) ? 0 : 1;
-                if (favA !== favB) return favA - favB;
-                return a.cells[0].innerText.localeCompare(b.cells[0].innerText);
-            });
-            rows.forEach(row => tbody.appendChild(row));
             document.getElementById('counterInfo').innerText = "Widoczne: " + visible;
         }
-
-        let sortDir = 1;
         function sortTable(n) {
             const tbody = document.getElementById('matchesBody');
             const rows = Array.from(tbody.querySelectorAll('.match-row'));
-            rows.sort((a, b) => {
-                let valA = a.children[n].getAttribute('data-val') || a.children[n].innerText;
-                let valB = b.children[n].getAttribute('data-val') || b.children[n].innerText;
-                if (n === 5) { 
-                    const rank = {"TAK!!": 4, "TAK": 3, "MOŻE": 2, "-": 1};
-                    valA = rank[valA] || 0; valB = rank[valB] || 0;
-                    return (valA - valB) * sortDir * -1;
-                }
-                return valA.localeCompare(valB) * sortDir;
-            });
+            rows.sort((a, b) => a.cells[n].innerText.localeCompare(b.cells[n].innerText));
             rows.forEach(row => tbody.appendChild(row));
-            sortDir *= -1;
         }
         function checkProgress() {
             fetch('/progress').then(r => r.json()).then(data => {
@@ -242,7 +195,6 @@
                     const p = Math.round((data.current / data.total) * 100) || 0;
                     document.getElementById('progressBar').style.width = p + '%';
                     document.getElementById('progressText').innerText = p + '%';
-                    document.getElementById('progressMsg').innerText = data.message || "Pobieranie...";
                     if (p >= 100) setTimeout(() => location.reload(), 2000);
                 } else { el.style.display = 'none'; }
             });
