@@ -7,12 +7,23 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <style>
-        body { background-color: #121212; color: #e0e0e0; font-size: 0.85rem; }
+        body { background-color: #121212; color: #e0e0e0; font-size: 0.8rem; }
         .table-hover tbody tr:hover { background-color: #2c2c2c; }
         .lamaki-header { background: linear-gradient(90deg, #2c0b0b 0%, #4a1010 100%); border-bottom: 2px solid #dc3545; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
         .nav-pills .nav-link.active { background-color: #dc3545; } 
         .nav-pills .nav-link { color: #aaa; }
-        .stat-cell { font-size: 0.85rem; font-weight: bold; text-align: center; width: 15%; color: #ff9800; }
+        th.sortable { cursor: pointer; text-decoration: underline dotted; }
+        .percent-span { color: #ffc107; font-size: 0.8em; margin-left: 4px; }
+        .filter-container { background-color: #1e1e1e; border: 1px solid #333; border-radius: 8px; padding: 10px; margin-bottom: 15px; }
+        .star-icon { cursor: pointer; font-size: 1.2rem; transition: transform 0.2s; color: #495057; }
+        .star-icon:hover { transform: scale(1.2); color: #ffc107; }
+        .star-active { color: #ffc107 !important; }
+        tr.last-fav > td { border-bottom: 3px solid #dc3545 !important; box-shadow: 0 4px 6px -6px rgba(220, 53, 69, 0.5); }
+        .tag-badge { font-weight: bold; font-size: 0.8em; }
+        .stat-col { font-size: 0.75rem; border-left: 1px solid #444; }
+        
+        /* ZWĘŻONA KOLUMNA MECZU/LIGI */
+        .col-match-narrow { max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     </style>
   </head>
   <body>
@@ -21,46 +32,253 @@
             <ul class="nav nav-pills p-2 bg-dark rounded-pill border border-secondary">
                 <li class="nav-item"><a href="/" class="nav-link">Mecze</a></li>
                 <li class="nav-item"><a href="/lamaki" class="nav-link active">Łamaki (1/2)</a></li>
+                <li class="nav-item"><a href="/teams" class="nav-link">Baza Drużyn</a></li>
                 <li class="nav-item"><a href="/promocje" class="nav-link">Promocje</a></li>
             </ul>
         </header>
+        
         <div class="lamaki-header text-center">
             <h2 class="h4 fw-bold m-0"><i class="bi bi-lightning-charge-fill text-danger"></i> Polowanie na Łamaki</h2>
-            <small class="text-muted">Ilość łamaków (HT/FT) w ostatnich ~100 meczach drużyny.</small>
+            <small class="text-muted">Procent meczów z łamakiem (HT/FT) + Pełna historia 5 lat.</small>
         </div>
-        <div class="d-flex justify-content-center mb-3">
-             <div class="btn-group">
-                <a href="/lamaki?date={{ today_date }}" class="btn btn-sm btn-{{ 'danger' if current_view == today_date else 'outline-secondary' }}">DZIŚ</a>
-                <a href="/lamaki?date={{ tomorrow_date }}" class="btn btn-sm btn-{{ 'danger' if current_view == tomorrow_date else 'outline-secondary' }}">JUTRO</a>
+
+        <div class="d-flex justify-content-center mb-4">
+             <div class="btn-group shadow-sm">
+                <a href="/lamaki?date={{ today_date }}" class="btn px-4 btn-{{ 'danger' if current_view == today_date else 'outline-secondary' }}">DZIŚ</a>
+                <a href="/lamaki?date={{ tomorrow_date }}" class="btn px-4 btn-{{ 'danger' if current_view == tomorrow_date else 'outline-secondary' }}">JUTRO</a>
             </div>
         </div>
+
+        <div class="filter-container d-flex flex-wrap align-items-center justify-content-center gap-3">
+            <div class="btn-group btn-group-sm" role="group">
+                <input type="radio" class="btn-check filter-type" name="filterType" id="typeAll" value="ALL" checked>
+                <label class="btn btn-outline-secondary" for="typeAll">Wszystkie</label>
+                <input type="radio" class="btn-check filter-type" name="filterType" id="typeTAK" value="TAK">
+                <label class="btn btn-outline-danger" for="typeTAK">TAK</label>
+            </div>
+            
+            <div class="vr bg-secondary mx-2"></div>
+            
+            <div class="form-check form-switch m-0">
+                <input class="form-check-input" type="checkbox" id="h2hFilter">
+                <label class="form-check-label text-warning fw-bold small" for="h2hFilter">H2H > 0</label>
+            </div>
+
+            <div class="vr bg-secondary mx-2"></div>
+
+            <div class="d-flex align-items-center text-light border-end border-secondary pe-2 me-2">
+                <label for="minStreakY" class="me-1 small text-danger fw-bold">Min Rok:</label>
+                <input type="number" id="minStreakY" class="form-control form-control-sm bg-dark text-white border-secondary p-0 text-center" style="width: 35px;" value="0" min="0">
+            </div>
+            <div class="d-flex align-items-center text-light border-end border-secondary pe-2 me-2">
+                <label for="minStreakM" class="me-1 small text-warning fw-bold">Min Msc:</label>
+                <input type="number" id="minStreakM" class="form-control form-control-sm bg-dark text-white border-secondary p-0 text-center" style="width: 35px;" value="0" min="0">
+            </div>
+
+            <div class="d-flex align-items-center text-light border-end border-secondary pe-2 me-2">
+                <label for="minJan" class="me-1 m-0 text-nowrap small text-muted">{{ curr_month }}:</label>
+                <input type="number" id="minJan" class="form-control form-control-sm bg-dark text-white border-secondary p-0 text-center" style="width: 35px;" value="0" min="0">
+            </div>
+            <div class="d-flex align-items-center text-light">
+                <label for="minPercent" class="me-1 m-0 text-nowrap small text-muted">%:</label>
+                <input type="number" id="minPercent" class="form-control form-control-sm bg-dark text-white border-secondary p-0 text-center" style="width: 35px;" value="0" min="0" max="100">
+            </div>
+            
+            <div class="form-check form-switch m-0 ms-2">
+                <input class="form-check-input" type="checkbox" id="showFavoritesOnly">
+                <label class="form-check-label text-warning fw-bold small" for="showFavoritesOnly"><i class="bi bi-star-fill"></i></label>
+            </div>
+            <div class="form-check form-switch m-0">
+                <input class="form-check-input" type="checkbox" id="hideFinished">
+                <label class="form-check-label text-light small" for="hideFinished">Ukryj FT</label>
+            </div>
+            
+            <div class="ms-auto text-muted small">Mecze: <span id="visibleCount" class="text-white fw-bold">{{ matches|length }}</span></div>
+        </div>
+
         <div class="table-responsive">
-            <table class="table table-dark table-striped align-middle table-hover table-sm">
+            <table class="table table-dark table-striped align-middle table-hover table-sm" id="lamakiTable">
                 <thead>
                     <tr>
-                        <th>Godz.</th><th>Liga</th><th>Mecz</th>
-                        <th class="stat-cell">Łamaki (H)</th>
-                        <th class="stat-cell">Łamaki (A)</th>
-                        <th class="text-center">Analiza</th><th class="text-end">Wynik</th>
+                        <th onclick="sortTable(0)" class="sortable">Godz.</th>
+                        <th onclick="sortTable(1)" class="sortable">Liga</th>
+                        <th>Gospodarz</th>
+                        
+                        <th onclick="sortTable(3)" class="text-center text-muted small sortable border-start border-secondary">Total</th>
+                        <th onclick="sortTable(4)" class="text-center text-danger small sortable">Serie</th>
+                        <th onclick="sortTable(5)" class="text-center text-info small border-end border-secondary sortable">{{ curr_month }}</th>
+                        
+                        <th class="ps-2">Gość</th>
+                        
+                        <th onclick="sortTable(7)" class="text-center text-muted small sortable border-start border-secondary">Total</th>
+                        <th onclick="sortTable(8)" class="text-center text-danger small sortable">Serie</th>
+                        <th onclick="sortTable(9)" class="text-center text-info small sortable border-end border-secondary">{{ curr_month }}</th>
+                        
+                        <th class="text-center text-warning">H2H</th>
+                        <th class="text-center">Analiza</th>
+                        <th class="text-end">Wynik</th>
+                        <th class="text-center">Info</th>
+                        <th class="text-center" style="width: 40px;"><i class="bi bi-star-fill text-warning"></i></th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="matchesBody">
                     {% if not matches.empty %}
                     {% for index, row in matches.iterrows() %}
-                    <tr>
+                    <tr class="match-item" data-time="{{ row['time'] }}" data-status="{{ row['status'] }}" data-lh="{{ row['lamak_h'] }}" data-la="{{ row['lamak_a'] }}" data-fav="{{ '1' if row['is_favorite'] else '0' }}" data-tag="{{ row['tag'] }}" data-h2h="{{ row['h2h_lamak'] }}">
+                        
                         <td>{{ row['time'] }}{% if row['is_live'] %}<br><span class="badge bg-danger rounded-pill" style="font-size:0.5em">LIVE</span>{% endif %}</td>
-                        <td class="small text-muted">{{ row['league_country'] }}</td>
-                        <td><span class="fw-bold">{{ row['home_name'] }}</span> - <span>{{ row['away_name'] }}</span></td>
-                        <td class="stat-cell">{{ row['lamak_h'] }}</td>
-                        <td class="stat-cell">{{ row['lamak_a'] }}</td>
-                        <td class="text-center"><a href="/analyze/{{ row['id'] }}" onclick="window.open(this.href, 'A', 'width=1100,height=800'); return false;" class="btn btn-outline-danger btn-sm py-0 px-2"><i class="bi bi-search"></i></a></td>
-                        <td class="text-end font-monospace">{{ row['formatted_score'] }}</td>
+                        
+                        <td class="small text-muted col-match-narrow" title="{{ row['league_country'] }}">{{ row['league_country'] }}</td>
+                        
+                        <td><span class="fw-bold">{{ row['home_name'] }}</span> <span class="percent-span">({{ row['lamak_h'] }})</span></td>
+                        <td class="text-center stat-col text-muted">{{ row['h_total'] }}</td>
+                        <td class="text-center stat-col text-danger fw-bold">{% if row['h_str_y'] > 0 %}{{ row['h_str_y'] }}L{% endif %} {% if row['h_str_m'] > 0 %}{{ row['h_str_m'] }}M{% endif %} {% if row['h_str_y'] == 0 and row['h_str_m'] == 0 %}-{% endif %}</td>
+                        <td class="text-center stat-col text-info border-end border-secondary">{{ row['h_m_hist'] }}</td>
+                        
+                        <td class="ps-2"><span>{{ row['away_name'] }}</span> <span class="percent-span">({{ row['lamak_a'] }})</span></td>
+                        <td class="text-center stat-col text-muted">{{ row['a_total'] }}</td>
+                        <td class="text-center stat-col text-danger fw-bold">{% if row['a_str_y'] > 0 %}{{ row['a_str_y'] }}L{% endif %} {% if row['a_str_m'] > 0 %}{{ row['a_str_m'] }}M{% endif %} {% if row['a_str_y'] == 0 and row['a_str_m'] == 0 %}-{% endif %}</td>
+                        <td class="text-center stat-col text-info border-end border-secondary">{{ row['a_m_hist'] }}</td>
+                        
+                        <td class="text-center small fw-bold">
+                            {% if row['h2h_lamak'] and row['h2h_lamak'] != '0/0' and row['h2h_lamak'] != '-' %}
+                                {% if row['h2h_lamak'][0] != '0' %}
+                                    <span class="text-warning" style="font-size: 1.1em;">{{ row['h2h_lamak'] }}</span>
+                                {% else %}
+                                    <span class="text-muted">{{ row['h2h_lamak'] }}</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+
+                        <td class="text-center"><a href="/analyze_lamaki/{{ row['id'] }}" onclick="window.open(this.href, 'AL', 'width=1100,height=800'); return false;" class="btn btn-outline-danger btn-sm py-0 px-2"><i class="bi bi-search"></i></a></td>
+                        <td class="text-end font-monospace">{% if row['status'] == 'FT' %}<span class="text-muted me-1 small">FT</span>{% endif %}{{ row['score'] }}</td>
+                        <td class="text-center">
+                            {% if row['tag'] == 'TAK' %}<span class="badge bg-danger tag-badge">TAK</span>
+                            {% elif row['tag'] == 'WfB' %}<span class="badge bg-warning text-dark tag-badge">WfB</span>
+                            {% elif row['tag'] == 'HT' %}<span class="badge bg-info text-dark tag-badge">HT</span>
+                            {% elif row['tag'] == 'SIADŁO!' %}<span class="badge bg-success border border-light tag-badge">SIADŁO!</span>{% endif %}
+                        </td>
+                        <td class="text-center"><i class="bi {{ 'bi-star-fill star-active' if row['is_favorite'] else 'bi-star' }} star-icon" onclick="toggleFav(this, {{ row['id'] }})"></i></td>
                     </tr>
-                    {% endfor %}
-                    {% endif %}
+                    {% endfor %}{% endif %}
                 </tbody>
             </table>
         </div>
     </div>
+    <script>
+        function sortTable(n) { const tbody = document.getElementById('matchesBody'); let rows = Array.from(tbody.querySelectorAll('tr.match-item')); let dir = tbody.getAttribute('data-sort-dir') === 'asc' ? 'desc' : 'asc'; tbody.setAttribute('data-sort-dir', dir); rows.sort((a, b) => { const favA = a.getAttribute('data-fav') === '1'; const favB = b.getAttribute('data-fav') === '1'; if (favA && !favB) return -1; if (!favA && favB) return 1; let x = a.cells[n].innerText.trim(); let y = b.cells[n].innerText.trim(); if (n >= 3 && n <= 9) { x = parseFloat(x.split('/')[0].replace(/[LM]/g, '')) || 0; y = parseFloat(y.split('/')[0].replace(/[LM]/g, '')) || 0; } else { x = x.toLowerCase(); y = y.toLowerCase(); } if (x < y) return dir === 'asc' ? -1 : 1; if (x > y) return dir === 'asc' ? 1 : -1; return 0; }); rebuildTable(rows, tbody); }
+        
+        const hideFinishedCb = document.getElementById('hideFinished'); 
+        const minPercentInp = document.getElementById('minPercent'); 
+        const minJanInp = document.getElementById('minJan'); 
+        const showFavCb = document.getElementById('showFavoritesOnly'); 
+        const typeRadios = document.querySelectorAll('.filter-type'); 
+        const h2hFilterCb = document.getElementById('h2hFilter'); 
+        
+        // NOWE FILTRY
+        const minStreakYInp = document.getElementById('minStreakY'); 
+        const minStreakMInp = document.getElementById('minStreakM'); 
+
+        const visibleCountSpan = document.getElementById('visibleCount'); 
+        const tbody = document.getElementById('matchesBody');
+        
+        function parsePercent(str) { if (!str || str === '?' || str === 'ERR') return 0; return parseFloat(str.replace('%', '').replace('(', '').replace(')', '')); }
+        function isOldMatch(timeStr) { if (!timeStr) return false; try { const now = new Date(); const [hours, minutes] = timeStr.split(':').map(Number); const matchDate = new Date(); matchDate.setHours(hours, minutes, 0, 0); const diff = now - matchDate; return diff > 9000000; } catch (e) { return false; } }
+        
+        // Funkcja do wyciągania liczb z tekstu "2L 3M"
+        function parseStreak(text) {
+            let y = 0, m = 0;
+            if (!text || text === '-') return {y:0, m:0};
+            
+            // Szukamy liczby przed L
+            let matchY = text.match(/(\d+)L/);
+            if (matchY) y = parseInt(matchY[1]);
+            
+            // Szukamy liczby przed M
+            let matchM = text.match(/(\d+)M/);
+            if (matchM) m = parseInt(matchM[1]);
+            
+            return {y, m};
+        }
+
+        function refreshView() { let rows = Array.from(tbody.querySelectorAll('tr.match-item')); rows.sort((a, b) => { const favA = a.getAttribute('data-fav') === '1'; const favB = b.getAttribute('data-fav') === '1'; if (favA && !favB) return -1; if (!favA && favB) return 1; return a.getAttribute('data-time').localeCompare(b.getAttribute('data-time')); }); rebuildTable(rows, tbody); }
+        
+        function rebuildTable(rows, tbody) {
+            const hideFT = hideFinishedCb.checked; 
+            const onlyFav = showFavCb.checked; 
+            const minP = parseFloat(minPercentInp.value) || 0; 
+            const minJan = parseInt(minJanInp.value) || 0; 
+            const filterH2H = h2hFilterCb.checked; 
+            
+            // Pobieramy wartości z nowych inputów
+            const minStreakY = parseInt(minStreakYInp.value) || 0;
+            const minStreakM = parseInt(minStreakMInp.value) || 0;
+            
+            let selectedType = 'ALL';
+            typeRadios.forEach(r => { if(r.checked) selectedType = r.value; });
+            
+            let visible = 0; rows.forEach(r => r.classList.remove('last-fav')); let visibleRows = [];
+            
+            rows.forEach(item => {
+                const status = item.getAttribute('data-status'); 
+                const timeStr = item.getAttribute('data-time'); 
+                const pHome = parsePercent(item.getAttribute('data-lh')); 
+                const pAway = parsePercent(item.getAttribute('data-la')); 
+                const isFav = item.getAttribute('data-fav') === '1'; 
+                const tag = item.getAttribute('data-tag'); 
+                const h2hVal = item.getAttribute('data-h2h');
+                
+                // Kolumny: Total(3), Serie(4), Hist(5) || Total(7), Serie(8), Hist(9)
+                let hJan = 0; let aJan = 0; 
+                try { hJan = parseInt(item.cells[5].innerText.split('/')[0]) || 0; aJan = parseInt(item.cells[9].innerText.split('/')[0]) || 0; } catch(e) {}
+                
+                // Parsujemy serie z tekstu kolumn (np. "1L 2M")
+                let sH = parseStreak(item.cells[4].innerText);
+                let sA = parseStreak(item.cells[8].innerText);
+
+                let show = true;
+                if (hideFT) { if (status === 'FT') show = false; if (isOldMatch(timeStr)) show = false; }
+                if (onlyFav && !isFav) show = false;
+                if (show && (pHome < minP && pAway < minP && !isFav)) show = false;
+                if (show && minJan > 0) { if (hJan < minJan && aJan < minJan) show = false; }
+                if (show) { if (selectedType !== 'ALL' && tag !== selectedType) { show = false; } }
+                
+                if (show && filterH2H) {
+                    if (!h2hVal || h2hVal === '-' || h2hVal.startsWith('0/')) show = false;
+                }
+
+                // NOWA LOGIKA FILTROWANIA SERII (MIN ROK i MIN MSC)
+                if (show && (minStreakY > 0 || minStreakM > 0)) {
+                    // Sprawdzamy Gospodarza
+                    const hostFits = (sH.y >= minStreakY && sH.m >= minStreakM);
+                    // Sprawdzamy Gościa
+                    const awayFits = (sA.y >= minStreakY && sA.m >= minStreakM);
+                    
+                    // Jeśli NIKT nie pasuje do wymagań, ukryj
+                    if (!hostFits && !awayFits) show = false;
+                }
+
+                item.style.display = show ? '' : 'none'; if (show) { visible++; visibleRows.push(item); tbody.appendChild(item); }
+            });
+            for (let i = 0; i < visibleRows.length; i++) { if (visibleRows[i].getAttribute('data-fav') === '1') { if (i + 1 === visibleRows.length || visibleRows[i+1].getAttribute('data-fav') === '0') { visibleRows[i].classList.add('last-fav'); break; } } }
+            visibleCountSpan.textContent = visible;
+        }
+        
+        hideFinishedCb.addEventListener('change', refreshView); 
+        minPercentInp.addEventListener('input', refreshView); 
+        minJanInp.addEventListener('input', refreshView); 
+        showFavCb.addEventListener('change', refreshView); 
+        typeRadios.forEach(r => r.addEventListener('change', refreshView));
+        h2hFilterCb.addEventListener('change', refreshView);
+        
+        // Listenery do nowych inputów
+        minStreakYInp.addEventListener('input', refreshView);
+        minStreakMInp.addEventListener('input', refreshView);
+
+        function toggleFav(icon, id) { icon.style.transform = "scale(0.8)"; setTimeout(() => icon.style.transform = "scale(1.2)", 100); fetch(`/toggle_favorite/${id}`, { method: 'POST' }).then(r => r.json()).then(data => { if (data.success) { const row = icon.closest('tr'); if (data.is_favorite) { icon.classList.remove('bi-star'); icon.classList.add('bi-star-fill', 'star-active'); row.setAttribute('data-fav', '1'); } else { icon.classList.remove('bi-star-fill', 'star-active'); icon.classList.add('bi-star'); row.setAttribute('data-fav', '0'); } refreshView(); } }); }
+        refreshView();
+    </script>
   </body>
 </html>

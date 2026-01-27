@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="pl" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <title>Analiza H2H - Pewniaczek</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #1a1a1a; color: #e0e0e0; font-size: 0.9rem; }
+        .card { background-color: #252525; border: 1px solid #333; margin-bottom: 20px; }
+        .card-header { background-color: #333; border-bottom: 1px solid #444; font-weight: bold; color: #fff; }
+        .table { --bs-table-bg: #252525; --bs-table-color: #ccc; --bs-table-border-color: #444; }
+        
+        /* Styl dla łamaka w H2H */
+        .lamak-row { background-color: rgba(220, 53, 69, 0.15) !important; }
+        .lamak-row td { color: #ff8888 !important; font-weight: bold; }
+        .badge-lamak { background-color: #dc3545; color: white; margin-left: 5px; font-size: 0.7em; }
+        
+        .score-box { font-size: 1.5rem; font-weight: bold; letter-spacing: 2px; }
+        .league-info { color: #888; font-size: 0.8rem; text-transform: uppercase; }
+    </style>
+</head>
+<body class="p-3">
+
+    <div class="card text-center mb-4 border-secondary">
+        <div class="card-body">
+            <div class="league-info mb-2">{{ match.league.name }} ({{ match.league.country }})</div>
+            <div class="d-flex justify-content-center align-items-center gap-4">
+                <h3 class="m-0 text-white">{{ match.teams.home.name }}</h3>
+                <div class="score-box text-warning">VS</div>
+                <h3 class="m-0 text-white">{{ match.teams.away.name }}</h3>
+            </div>
+            <div class="mt-2 text-muted small">Start: {{ match.fixture.date|replace('T', ' ')|truncate(16, True, '') }}</div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header text-warning d-flex justify-content-between">
+                    <span>⚔️ Historia Bezpośrednia (H2H)</span>
+                    <small>Mecze, w których padł łamak są wyróżnione</small>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead>
+                            <tr class="text-secondary small">
+                                <th>Data</th>
+                                <th>Liga</th>
+                                <th>Mecz</th>
+                                <th class="text-center">HT</th>
+                                <th class="text-center">FT</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if h2h %}
+                                {% for m in h2h %}
+                                <tr class="{% if m.is_lamak %}lamak-row{% endif %}">
+                                    <td>{{ m.date }}</td>
+                                    <td class="small text-muted">{{ m.league }}</td>
+                                    <td>
+                                        {{ m.home_name }} - {{ m.away_name }}
+                                        {% if m.is_lamak %}
+                                            <span class="badge badge-lamak">ŁAMAK!</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">{{ m.ht_score }}</td>
+                                    <td class="text-center">{{ m.score }}</td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr><td colspan="5" class="text-center text-muted py-3">Brak historii H2H w bazie API.</td></tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header text-info">
+                    🏠 Łamaki Gospodarza (Historia)
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-sm mb-0">
+                        <thead class="text-secondary small">
+                            <tr><th>Data</th><th>Mecz</th><th class="text-end">Wynik</th><th>Typ</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for m in reversals_home %}
+                            <tr>
+                                <td>{{ m.date }}</td>
+                                <td>{{ m.home_name }} - {{ m.away_name }}</td>
+                                <td class="text-end fw-bold text-info">{{ m.score }}</td>
+                                <td><span class="badge bg-secondary">{{ m.type }}</span></td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="4" class="text-center small text-muted p-3">Brak łamaków w analizowanych sezonach.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header text-info">
+                    ✈️ Łamaki Gościa (Historia)
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-sm mb-0">
+                        <thead class="text-secondary small">
+                            <tr><th>Data</th><th>Mecz</th><th class="text-end">Wynik</th><th>Typ</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for m in reversals_away %}
+                            <tr>
+                                <td>{{ m.date }}</td>
+                                <td>{{ m.home_name }} - {{ m.away_name }}</td>
+                                <td class="text-end fw-bold text-info">{{ m.score }}</td>
+                                <td><span class="badge bg-secondary">{{ m.type }}</span></td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="4" class="text-center small text-muted p-3">Brak łamaków w analizowanych sezonach.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="pl" data-bs-theme="dark">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Baza Drużyn - Pewniaczek Pro</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+        .container-soon {
+            text-align: center;
+            position: relative;
+        }
+        .soon-text {
+            font-size: 8rem;
+            font-weight: 900;
+            color: rgba(255, 255, 255, 0.05);
+            text-transform: uppercase;
+            transform: rotate(-10deg);
+            pointer-events: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-15deg);
+            white-space: nowrap;
+            z-index: 0;
+        }
+        .content {
+            position: relative;
+            z-index: 1;
+        }
+        .nav-pills .nav-link.active {
+            background-color: #0d6efd;
+        }
+        .nav-pills .nav-link {
+            color: #aaa;
+        }
+        
+        /* Nav overlay on top */
+        header {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            z-index: 10;
+        }
+    </style>
+  </head>
+  <body>
+    <header>
+        <ul class="nav nav-pills p-2 bg-dark rounded-pill border border-secondary">
+            <li class="nav-item"><a href="/" class="nav-link">Mecze</a></li>
+            <li class="nav-item"><a href="/lamaki" class="nav-link">Łamaki (1/2)</a></li>
+            <li class="nav-item"><a href="/teams" class="nav-link active">Baza Drużyn</a></li>
+            <li class="nav-item"><a href="/promocje" class="nav-link">Promocje</a></li>
+        </ul>
+    </header>
+
+    <div class="container-soon">
+        <div class="soon-text">WKRÓTCE</div>
+        <div class="content">
+            <h1 class="display-4 fw-bold text-warning"><i class="bi bi-cone-striped"></i> Budowa Trwa</h1>
+            <p class="lead text-muted">Ta sekcja jest w trakcie przebudowy.<br>Wróć później po pełną bazę drużyn.</p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

@@ -3,11 +3,12 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Pewniaczek Pro</title>
+    <title>Pewniaczek Pro - Dziś</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <style>
-        body { background-color: #121212; color: #e0e0e0; font-size: 0.85rem; }
+        body { background-color: #121212; color: #e0e0e0; font-size: 0.75rem; }
+        .table-dark { --bs-table-bg: #1e1e1e; }
         .table-hover tbody tr:hover { background-color: #2c2c2c; }
         .live-badge { animation: pulse 1.5s infinite; background-color: #dc3545; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
@@ -17,66 +18,48 @@
         .verdict-cell { font-weight: bold; text-align: center; width: 10%; }
         .filter-section { background-color: #1e1e1e; border-bottom: 1px solid #333; padding: 10px 15px; margin-bottom: 15px; border-radius: 6px; }
         .star-btn { cursor: pointer; font-size: 1.1rem; transition: transform 0.2s; }
-        .star-btn:hover { transform: scale(1.2); }
+        .star-btn:hover { transform: scale(1.2); color: #ffc107; }
         .nav-pills .nav-link.active { background-color: #0d6efd; } 
         .nav-pills .nav-link { color: #aaa; }
+        tr.last-fav > td { border-bottom: 3px solid #dc3545 !important; }
     </style>
   </head>
   <body>
-    <div id="progressContainer" class="container-fluid mt-2" style="display:none;">
-        <div class="alert alert-info py-2 mb-1">
-            <div class="d-flex justify-content-between small mb-1">
-                <span id="progressMsg"><i class="bi bi-cloud-download"></i> Aktualizacja...</span>
-                <span id="progressText">0%</span>
-            </div>
-            <div class="progress" style="height: 10px;">
-                <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%"></div>
-            </div>
-        </div>
-    </div>
-
     <div class="container-fluid py-3 px-3">
         <header class="d-flex flex-column align-items-center mb-3">
             <h1 class="h5 mb-2"><i class="bi bi-trophy-fill text-warning"></i> Pewniaczek Pro</h1>
             <ul class="nav nav-pills p-1 bg-dark rounded-pill border border-secondary" style="font-size: 0.9rem;">
                 <li class="nav-item"><a href="/" class="nav-link active">Mecze</a></li>
                 <li class="nav-item"><a href="/lamaki" class="nav-link">Łamaki (1/2)</a></li>
+                <li class="nav-item"><a href="/teams" class="nav-link">Baza Drużyn</a></li>
                 <li class="nav-item"><a href="/promocje" class="nav-link">Promocje</a></li>
             </ul>
         </header>
 
-        <div class="d-flex justify-content-between align-items-center mb-2">
+        <div class="d-flex justify-content-between align-items-center mb-2 bg-dark p-2 rounded">
              <div class="btn-group">
                 <a href="/?date={{ today_date }}" class="btn btn-sm btn-{{ 'primary' if current_view == today_date else 'outline-secondary' }}">DZIŚ</a>
                 <a href="/?date={{ tomorrow_date }}" class="btn btn-sm btn-{{ 'primary' if current_view == tomorrow_date else 'outline-secondary' }}">JUTRO</a>
             </div>
-        </div>
+            </div>
 
-        <div class="filter-section d-flex flex-wrap gap-3 align-items-center justify-content-between">
+        <div class="d-flex flex-wrap gap-3 align-items-center justify-content-between mb-3 bg-dark p-2 rounded">
             <div class="d-flex gap-2 align-items-center">
                 <button class="btn btn-sm btn-outline-warning" onclick="toggleFilter('FAV', this)"><i class="bi bi-star-fill"></i> Fav</button>
                 <div class="vr bg-secondary mx-1"></div>
-                <button class="btn btn-sm btn-outline-success" onclick="toggleFilter('TAK!!', this)">TAK!!</button>
                 <button class="btn btn-sm btn-outline-success" onclick="toggleFilter('TAK', this)">TAK</button>
                 <button class="btn btn-sm btn-outline-warning" onclick="toggleFilter('MOŻE', this)">MOŻE</button>
                 <button class="btn btn-sm btn-light active" onclick="resetFilters(this)">Wszystkie</button>
             </div>
-            <div class="d-flex gap-2 align-items-center border-start border-end border-secondary px-3">
-                <span class="text-muted small">Min. meczów:</span>
-                <input type="number" id="minMatchesInput" class="form-control form-control-sm bg-dark text-light border-secondary" style="width: 60px;" value="0" min="0" onchange="applyFilters()">
-                <span class="text-muted small">w:</span>
-                <select id="rangeSelect" class="form-select form-select-sm bg-dark text-light border-secondary" style="width: 90px;" onchange="applyFilters()">
-                    <option value="10">Ost. 10</option>
-                    <option value="6">Ost. 6</option>
-                    <option value="3">Ost. 3</option>
-                </select>
-            </div>
-            <div class="form-check form-switch">
-                <input class="form-check-input" type="checkbox" id="hideFinishedSwitch" onchange="applyFilters()">
-                <label class="form-check-label small text-muted" for="hideFinishedSwitch">Ukryj zakończone</label>
+            <div class="d-flex gap-2">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="hideFinishedSwitch" onchange="applyFilters()">
+                    <label class="form-check-label small text-muted" for="hideFinishedSwitch">Ukryj zakończone</label>
+                </div>
             </div>
             <div class="text-muted small" id="counterInfo">Mecze: 0</div>
         </div>
+
         <div class="table-responsive">
             <table class="table table-dark table-striped align-middle table-hover table-sm" id="matchesTable">
                 <thead>
@@ -84,12 +67,14 @@
                         <th class="sortable" onclick="sortTable(0)">Godz.</th>
                         <th class="sortable" onclick="sortTable(1)">Liga</th>
                         <th>Mecz</th>
-                        <th class="stat-cell">G(10)</th>
-                        <th class="stat-cell">A(10)</th>
+                        <th class="stat-cell sortable" onclick="sortTable(3)">G(10)</th>
+                        <th class="stat-cell sortable" onclick="sortTable(4)">A(10)</th>
                         <th class="verdict-cell sortable" onclick="sortTable(5)">Werdykt</th>
+                        <th class="text-center" style="width: 50px;">H2H</th>
+                        <th class="text-center" style="width: 80px;">Late Goal</th>
                         <th class="text-center">Analiza</th>
                         <th class="text-end">Wynik</th>
-                        <th class="text-center" style="width: 40px;"><i class="bi bi-star-fill text-warning"></i></th>
+                        <th class="text-center"><i class="bi bi-star-fill text-warning"></i></th>
                     </tr>
                 </thead>
                 <tbody id="matchesBody">
@@ -99,107 +84,55 @@
                         data-id="{{ row['id'] }}"
                         data-verdict="{{ row['verdict'] }}" 
                         data-status="{{ row['status'] }}"
-                        data-h10="{{ row['h_l10'] }}" data-a10="{{ row['a_l10'] }}"
-                        data-h6="{{ row['h_l6'] }}" data-a6="{{ row['a_l6'] }}"
-                        data-h3="{{ row['h_l3'] }}" data-a3="{{ row['a_l3'] }}">
+                        data-h10="{{ row['h_l10'] }}" data-a10="{{ row['a_l10'] }}">
                         <td data-val="{{ row['time'] }}">{{ row['time'] }}{% if row['is_live'] %}<br><span class="badge live-badge rounded-pill" style="font-size:0.5em">LIVE</span>{% endif %}</td>
                         <td class="col-league" data-val="{{ row['league_country'] }}">{{ row['league_country'] }}</td>
-                        <td>{{ row['match_name'] }}</td>
+                        <td>
+                            <span class="fw-bold d-block text-truncate">{{ row['home_name'] }}</span>
+                            <span class="d-block text-truncate text-muted">{{ row['away_name'] }}</span>
+                        </td>
                         <td class="stat-cell">{{ row['stat_h'] }}</td>
                         <td class="stat-cell">{{ row['stat_a'] }}</td>
                         <td class="verdict-cell {{ row['verdict_class'] }}" data-val="{{ row['verdict'] }}">{{ row['verdict'] }}</td>
-                        <td class="text-center">
-                            <a href="/analyze/{{ row['id'] }}" onclick="window.open(this.href, 'A', 'width=1100,height=800'); return false;" class="btn btn-outline-info btn-sm opacity-75 py-0 px-2"><i class="bi bi-graph-up"></i></a>
+                        
+                        <td class="text-center small">
+                            {% if row['h2h_lamak'] and row['h2h_lamak'] != '0/0' and row['h2h_lamak'] != '-' %}
+                                <span class="badge bg-danger">{{ row['h2h_lamak'] }}</span>
+                            {% else %}
+                                <span class="text-muted">{{ row['h2h_lamak'] }}</span>
+                            {% endif %}
                         </td>
+
+                        <td class="text-center">{% if row['late_goal'] %}<span class="badge bg-success">TAK</span>{% endif %}</td>
+                        <td class="text-center"><a href="/analyze/{{ row['id'] }}" onclick="window.open(this.href, 'AN', 'width=1100,height=800'); return false;" class="btn btn-outline-info btn-sm opacity-75 py-0 px-2"><i class="bi bi-graph-up"></i></a></td>
                         <td class="text-end font-monospace fw-bold">{{ row['formatted_score'] }}</td>
-                        <td class="text-center">
-                            <i class="bi bi-star text-secondary star-btn" onclick="toggleFavorite({{ row['id'] }}, this)"></i>
-                        </td>
+                        <td class="text-center"><i class="bi bi-star text-secondary star-btn" onclick="toggleFavorite({{ row['id'] }}, this)"></i></td>
                     </tr>
-                    {% endfor %}
-                    {% endif %}
+                    {% endfor %}{% endif %}
                 </tbody>
             </table>
         </div>
     </div>
     <script>
         function getFavorites() { return JSON.parse(localStorage.getItem('pewniaczek_favs')) || []; }
-        function toggleFavorite(id, btn) {
-            let favs = getFavorites();
-            if (favs.includes(id)) { favs = favs.filter(f => f !== id); btn.classList.replace('bi-star-fill', 'bi-star'); btn.classList.remove('text-warning'); }
-            else { favs.push(id); btn.classList.replace('bi-star', 'bi-star-fill'); btn.classList.add('text-warning'); }
-            localStorage.setItem('pewniaczek_favs', JSON.stringify(favs));
-            applyFilters();
-        }
-        function restoreFavorites() {
-            const favs = getFavorites();
-            document.querySelectorAll('.match-row').forEach(row => {
-                if (favs.includes(parseInt(row.getAttribute('data-id')))) {
-                    const btn = row.querySelector('.star-btn');
-                    btn.classList.replace('bi-star', 'bi-star-fill'); btn.classList.add('text-warning');
-                }
-            });
-            applyFilters();
-        }
+        function toggleFavorite(id, btn) { let favs = getFavorites(); if (favs.includes(id)) { favs = favs.filter(f => f !== id); btn.classList.replace('bi-star-fill', 'bi-star'); btn.classList.remove('text-warning'); } else { favs.push(id); btn.classList.replace('bi-star', 'bi-star-fill'); btn.classList.add('text-warning'); } localStorage.setItem('pewniaczek_favs', JSON.stringify(favs)); applyFilters(); }
+        function restoreFavorites() { const favs = getFavorites(); document.querySelectorAll('.match-row').forEach(row => { if (favs.includes(parseInt(row.getAttribute('data-id')))) { const btn = row.querySelector('.star-btn'); btn.classList.replace('bi-star', 'bi-star-fill'); btn.classList.add('text-warning'); } }); applyFilters(); }
         let activeVerdict = 'ALL';
-        function toggleFilter(v, btn) {
-            document.querySelectorAll('.btn-outline-success, .btn-outline-warning, .btn-light').forEach(b => b.classList.remove('active'));
-            activeVerdict = (activeVerdict === v) ? 'ALL' : v;
-            if (activeVerdict !== 'ALL') btn.classList.add('active');
-            applyFilters();
-        }
+        function toggleFilter(v, btn) { document.querySelectorAll('.btn-outline-success, .btn-outline-warning, .btn-light').forEach(b => b.classList.remove('active')); activeVerdict = (activeVerdict === v) ? 'ALL' : v; if (activeVerdict !== 'ALL') btn.classList.add('active'); applyFilters(); }
         function resetFilters(btn) { activeVerdict = 'ALL'; document.querySelectorAll('.btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); applyFilters(); }
-        
         function applyFilters() {
-            const hideF = document.getElementById('hideFinishedSwitch').checked;
-            const minM = parseInt(document.getElementById('minMatchesInput').value) || 0;
-            const r = document.getElementById('rangeSelect').value;
-            const favs = getFavorites();
-            const rows = Array.from(document.getElementById('matchesBody').querySelectorAll('.match-row'));
-            let visible = 0;
-            const now = new Date();
-
-            rows.forEach(row => {
-                let show = true;
-                const id = parseInt(row.getAttribute('data-id'));
-                if (activeVerdict === 'FAV' && !favs.includes(id)) show = false;
-                else if (activeVerdict !== 'ALL' && activeVerdict !== 'FAV' && row.getAttribute('data-verdict') !== activeVerdict) show = false;
-                
-                if (hideF) {
-                    const status = row.getAttribute('data-status');
-                    if (['FT','AET','PEN'].includes(status)) show = false;
-                    const timeVal = row.cells[0].getAttribute('data-val'); 
-                    if (timeVal && timeVal.includes(':') && show) {
-                        const [h, m] = timeVal.split(':').map(Number);
-                        const matchDate = new Date(); matchDate.setHours(h, m, 0, 0);
-                        if ((now - matchDate) > (150 * 60 * 1000)) show = false;
-                    }
-                }
-                if (parseInt(row.getAttribute('data-h'+r)) < minM && parseInt(row.getAttribute('data-a'+r)) < minM) show = false;
-                row.style.display = show ? '' : 'none';
-                if(show) visible++;
-            });
-            document.getElementById('counterInfo').innerText = "Widoczne: " + visible;
+            const hideF = document.getElementById('hideFinishedSwitch').checked; const favs = getFavorites(); const tbody = document.getElementById('matchesBody'); let rows = Array.from(tbody.querySelectorAll('.match-row'));
+            let visibleCount = 0; let visibleRows = [];
+            rows.forEach(row => { row.classList.remove('last-fav'); let show = true; const id = parseInt(row.getAttribute('data-id')); 
+            if (activeVerdict === 'FAV' && !favs.includes(id)) show = false; else if (activeVerdict !== 'ALL' && activeVerdict !== 'FAV' && row.getAttribute('data-verdict') !== activeVerdict) show = false; 
+            if (hideF) { const status = row.getAttribute('data-status'); if (['FT','AET','PEN'].includes(status)) show = false; } 
+            row.style.display = show ? '' : 'none'; if(show) { visibleCount++; visibleRows.push(row); } });
+            for (let i = 0; i < visibleRows.length - 1; i++) { const currentId = parseInt(visibleRows[i].getAttribute('data-id')); const nextId = parseInt(visibleRows[i+1].getAttribute('data-id')); const currentIsFav = favs.includes(currentId); const nextIsFav = favs.includes(nextId); if (currentIsFav && !nextIsFav) { visibleRows[i].classList.add('last-fav'); break; } }
+            document.getElementById('counterInfo').innerText = "Widoczne: " + visibleCount;
         }
-        function sortTable(n) {
-            const tbody = document.getElementById('matchesBody');
-            const rows = Array.from(tbody.querySelectorAll('.match-row'));
-            rows.sort((a, b) => a.cells[n].innerText.localeCompare(b.cells[n].innerText));
-            rows.forEach(row => tbody.appendChild(row));
-        }
-        function checkProgress() {
-            fetch('/progress').then(r => r.json()).then(data => {
-                const el = document.getElementById('progressContainer');
-                if (data.is_running) {
-                    el.style.display = 'block';
-                    const p = Math.round((data.current / data.total) * 100) || 0;
-                    document.getElementById('progressBar').style.width = p + '%';
-                    document.getElementById('progressText').innerText = p + '%';
-                    if (p >= 100) setTimeout(() => location.reload(), 2000);
-                } else { el.style.display = 'none'; }
-            });
-        }
-        restoreFavorites(); setInterval(checkProgress, 3000);
+        function sortTable(n) { const tbody = document.getElementById('matchesBody'); let rows = Array.from(tbody.querySelectorAll('.match-row')); let dir = tbody.getAttribute('data-sort-dir') === 'asc' ? 'desc' : 'asc'; tbody.setAttribute('data-sort-dir', dir); rows.sort((a, b) => { let x = a.cells[n].innerText.toLowerCase(); let y = b.cells[n].innerText.toLowerCase(); if(n === 0 || n === 3 || n === 4) { x = parseFloat(x.replace('/', '')) || 0; y = parseFloat(y.replace('/', '')) || 0; } if (x < y) return dir === 'asc' ? -1 : 1; if (x > y) return dir === 'asc' ? 1 : -1; return 0; }); rows.forEach(row => tbody.appendChild(row)); applyFilters(); }
+        
+        restoreFavorites(); 
     </script>
   </body>
 </html>

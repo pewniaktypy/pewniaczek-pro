@@ -1,96 +1,75 @@
 import requests
 import json
-import sqlite3
-from datetime import datetime
-import pytz
+import os
+import sys
 
 # --- KONFIGURACJA ---
-API_KEY = "a9c00564195a59b4641909f9610c378d"  # Twój klucz
+H_ID = 248  # Melbourne Victory
+A_ID = 250  # Sydney FC
+SEASONS = [2021, 2022, 2023, 2024, 2025, 2026] # Zakres 5 lat
+
+try:
+    from config import API_KEY
+except ImportError:
+    API_KEY = os.environ.get("API_KEY", "BRAK_KLUCZA")
+
 HEADERS = {'x-rapidapi-host': "v3.football.api-sports.io", 'x-rapidapi-key': API_KEY}
-API_URL = "https://v3.football.api-sports.io/fixtures"
-PL_TIMEZONE = pytz.timezone('Europe/Warsaw')
 
-def run_test():
-    print("\n" + "="*40)
-    print(" 🛠  DIAGNOSTYKA PEWNIACZKA PRO 🛠 ")
-    print("="*40)
-
-    # 1. TEST KLUCZA API
-    print("\n[1/4] Sprawdzanie statusu konta API...")
-    try:
-        resp = requests.get("https://v3.football.api-sports.io/status", headers=HEADERS)
-        data = resp.json()
-        print(f"👉 Status HTTP: {resp.status_code}")
-        
-        if resp.status_code == 200:
-            account = data.get('response', {}).get('account', {})
-            reqs = data.get('response', {}).get('requests', {})
-            print(f"✅ Konto: {account.get('firstname')} {account.get('lastname')}")
-            print(f"✅ Limit dzienny: {reqs.get('limit_day')}")
-            print(f"✅ Zużyto dzisiaj: {reqs.get('current')}")
-        else:
-            print(f"❌ BŁĄD KLUCZA: {data}")
-            return
-    except Exception as e:
-        print(f"❌ BŁĄD POŁĄCZENIA: {e}")
-        return
-
-    # 2. TEST POBIERANIA MECZÓW
-    today = datetime.now(PL_TIMEZONE).strftime('%Y-%m-%d')
-    print(f"\n[2/4] Pobieranie meczów na dzień: {today}...")
-    try:
-        resp = requests.get(API_URL, headers=HEADERS, params={"date": today})
-        matches = resp.json().get('response', [])
-        count = len(matches)
-        print(f"👉 Znaleziono meczów: {count}")
-        
-        if count == 0:
-            print("⚠️ API zwróciło pustą listę! (Może dzisiaj nie ma meczów w pakiecie?)")
-            return
-        
-        print("✅ Pobieranie działa.")
-    except Exception as e:
-        print(f"❌ BŁĄD POBIERANIA: {e}")
-        return
-
-    # 3. TEST PRZETWARZANIA (Jeden mecz)
-    print(f"\n[3/4] Próba analizy pierwszego meczu...")
-    sample = matches[0]
-    team_home = sample['teams']['home']['name']
-    team_away = sample['teams']['away']['name']
-    print(f"👉 Mecz: {team_home} vs {team_away}")
+def test_5_years():
+    print(f"\n--- TEST 5 LAT: Melbourne Victory ({H_ID}) vs Sydney FC ({A_ID}) ---")
     
-    # Symulacja błędu Key Error
-    print("👉 Sprawdzanie struktury ligi...")
-    league = sample.get('league', {})
-    l_type = league.get('type')
-    print(f"   Typ ligi (raw): {l_type}")
-    
-    if not l_type:
-        print("⚠️ UWAGA: Ten mecz nie ma pola 'type'! (To wywalało stary kod)")
-    else:
-        print("✅ Struktura OK.")
+    total_matches_found = 0
+    h2h_matches = []
 
-    # 4. TEST BAZY DANYCH
-    print("\n[4/4] Sprawdzanie bazy danych...")
-    try:
-        conn = sqlite3.connect('pewniaczek.db')
-        cursor = conn.cursor()
-        cursor.execute("SELECT count(*) FROM matches")
-        db_count = cursor.fetchone()[0]
-        print(f"👉 Rekordów w bazie: {db_count}")
-        conn.close()
+    # PĘTLA PO LATACH (Zamiast last=50)
+    for season in SEASONS:
+        print(f"📡 Pobieram sezon {season}...", end="")
         
-        if db_count == 0:
-            print("❌ Baza jest pusta! Robot nie zapisuje danych.")
-        else:
-            print("✅ Baza zawiera dane.")
-    except Exception as e:
-        print(f"❌ Błąd dostępu do bazy: {e}")
+        url = "https://v3.football.api-sports.io/fixtures"
+        # Pobieramy mecze Melbourne z danego sezonu
+        params = {"team": H_ID, "season": season, "status": "FT"}
+        
+        try:
+            r = requests.get(url, headers=HEADERS, params=params, timeout=10)
+            data = r.json().get('response', [])
+            print(f" OK ({len(data)} meczów)")
+            
+            # Filtrowanie ręczne: szukamy Sydney FC
+            for m in data:
+                h = m['teams']['home']['id']
+                a = m['teams']['away']['id']
+                
+                # Jeśli przeciwnikiem jest Sydney (jako dom lub wyjazd)
+                if h == A_ID or a == A_ID:
+                    h2h_matches.append(m)
+                    
+        except Exception as e:
+            print(f" BŁĄD: {e}")
 
-    print("\n" + "="*40)
-    print(" KONIEC DIAGNOSTYKI ")
-    print("="*40 + "\n")
+    # --- WYNIKI ---
+    print(f"\n✅ ZNALEZIONO RAZEM: {len(h2h_matches)} meczów bezpośrednich w 5 lat.")
+    
+    # Sortowanie od najnowszych
+    h2h_matches.sort(key=lambda x: x['fixture']['date'], reverse=True)
+    
+    lamaki = 0
+    for m in h2h_matches:
+        d = m['fixture']['date'][:10]
+        ht = m['score']['halftime']
+        ft = m['score']['fulltime']
+        
+        # Czy łamak?
+        is_rev = False
+        if ht.get('home') is not None and ft.get('home') is not None:
+             if (ht['home'] > ht['away'] and ft['home'] < ft['away']) or \
+                (ht['away'] > ht['home'] and ft['home'] > ft['away']):
+                 is_rev = True
+                 lamaki += 1
+        
+        rev_txt = " <--- ŁAMAK !!!" if is_rev else ""
+        print(f" - {d}: {m['teams']['home']['name']} {m['goals']['home']}-{m['goals']['away']} {m['teams']['away']['name']} (HT: {ht['home']}-{ht['away']}){rev_txt}")
+
+    print(f"\n📊 PODSUMOWANIE STATYSTYK: {lamaki}/{len(h2h_matches)}")
 
 if __name__ == "__main__":
-    run_test()
+    test_5_years()

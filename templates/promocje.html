@@ -9,7 +9,6 @@
     <style>
         body { background-color: #0f0f0f; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; }
         
-        /* Nowoczesny styl tabeli jako oddzielnych kart */
         .promo-table { border-collapse: separate; border-spacing: 0 12px; width: 100%; }
         .promo-row {
             background: #1a1a1a;
@@ -31,7 +30,6 @@
         .promo-row td:first-child { border-top-left-radius: 12px; border-bottom-left-radius: 12px; border-left: 1px solid #333; }
         .promo-row td:last-child { border-top-right-radius: 12px; border-bottom-right-radius: 12px; border-right: 1px solid #333; }
 
-        /* Stylizacja elementów */
         .bookie-name { font-weight: 800; font-size: 1.3rem; letter-spacing: 0.5px; display: block; }
         .bonus-val { font-size: 0.8rem; opacity: 0.7; font-weight: normal; margin-top: 4px; display: block; }
         
@@ -43,6 +41,13 @@
         }
         .dash { color: #444; font-size: 1.2rem; }
 
+        .tax-free-badge {
+            font-weight: bold; padding: 4px 8px; border-radius: 4px; font-size: 0.9rem; display: inline-block;
+        }
+        .tax-green { color: #00e676; border: 1px solid #00e676; background: rgba(0, 230, 118, 0.1); }
+        .tax-blue { color: #29b6f6; border: 1px solid #29b6f6; background: rgba(41, 182, 246, 0.1); }
+        .tax-yellow { color: #ffeb3b; border: 1px solid #ffeb3b; background: rgba(255, 235, 59, 0.1); }
+        
         .code-container { text-align: center; }
         .code-box { 
             background: rgba(255, 255, 255, 0.08); 
@@ -70,7 +75,6 @@
         .nav-pills .nav-link.active { background-color: #dc3545; }
         .nav-pills .nav-link { color: #aaa; }
         
-        /* Nagłówki tabeli */
         .table-header th {
             color: #888;
             font-weight: 600;
@@ -106,6 +110,8 @@
                         <th>Depozyt</th>
                         <th>Freebet</th>
                         <th>Bez Ryzyka</th>
+                        <th>Bez Podatku</th>
+                        <th>Przewaga<br>2 Gole</th>
                         <th>Twój Kod</th>
                         <th style="width: 180px;">Odbierz</th>
                     </tr>
@@ -118,19 +124,19 @@
                             <span class="bonus-val text-light">{{ p.bonus_val }}</span>
                         </td>
                         
+                        <td class="text-center">{% if p.deposit == "X" %}<i class="bi bi-check-circle-fill check-icon"></i>{% elif p.deposit %}<span class="number-badge">{{ p.deposit }}</span>{% else %}<span class="dash">&bull;</span>{% endif %}</td>
+                        <td class="text-center">{% if p.freebet == "X" %}<i class="bi bi-check-circle-fill check-icon"></i>{% elif p.freebet %}<span class="number-badge">{{ p.freebet }}</span>{% else %}<span class="dash">&bull;</span>{% endif %}</td>
+                        <td class="text-center">{% if p.risk_free == "X" %}<i class="bi bi-check-circle-fill check-icon"></i>{% elif p.risk_free %}<span class="number-badge">{{ p.risk_free }}</span>{% else %}<span class="dash">&bull;</span>{% endif %}</td>
+
                         <td class="text-center">
-                            {% if p.deposit == "X" %}<i class="bi bi-check-circle-fill check-icon"></i>
-                            {% elif p.deposit %}<span class="number-badge">{{ p.deposit }}</span>
-                            {% else %}<span class="dash">&bull;</span>{% endif %}
+                            {% if p.tax_free == "Na stałe" %}<span class="tax-free-badge tax-green">Na stałe</span>
+                            {% elif "Dni" in p.tax_free %}<span class="tax-free-badge tax-blue">{{ p.tax_free }}</span>
+                            {% elif p.tax_free == "-" %}<span class="dash">&bull;</span>
+                            {% else %}<span class="tax-free-badge tax-yellow">{{ p.tax_free }}</span>{% endif %}
                         </td>
+
                         <td class="text-center">
-                            {% if p.freebet == "X" %}<i class="bi bi-check-circle-fill check-icon"></i>
-                            {% elif p.freebet %}<span class="number-badge">{{ p.freebet }}</span>
-                            {% else %}<span class="dash">&bull;</span>{% endif %}
-                        </td>
-                        <td class="text-center">
-                            {% if p.risk_free == "X" %}<i class="bi bi-check-circle-fill check-icon"></i>
-                            {% elif p.risk_free %}<span class="number-badge">{{ p.risk_free }}</span>
+                            {% if p.early_payout == "X" %}<i class="bi bi-check-circle-fill check-icon"></i>
                             {% else %}<span class="dash">&bull;</span>{% endif %}
                         </td>
 
