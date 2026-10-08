@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Rubik:wght@400;600;700&display=swap">
+<style>
+  :root { --bg:#0E1A16; --bg2:#16372A; --cream:#F4F1E8; --amber:#F2A33A; --green:#3FB874; --muted:#BFD3C8; --line:#2C5A45; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { width:1920px; height:1080px; overflow:hidden; background:var(--bg); }
+  body { font-family:'Rubik', sans-serif; color:var(--cream); position:relative; }
+  .abs { position:absolute; }
+  .scene { position:absolute; inset:0; opacity:0; }
+  .osw { font-family:'Oswald', sans-serif; text-transform:uppercase; }
+  .eyebrow { font-size:34px; font-weight:600; letter-spacing:8px; color:var(--amber); text-transform:uppercase; }
+  .h { font-family:'Oswald', sans-serif; font-weight:700; text-transform:uppercase; line-height:1.05; }
+  .pitch { position:absolute; inset:0; background:radial-gradient(ellipse at 70% 40%, #1B4434 0%, #0E1A16 60%); }
+  .circle { position:absolute; left:1360px; top:290px; width:500px; height:500px; border:5px solid var(--line); border-radius:50%; }
+  .midline { position:absolute; left:1607px; top:0; width:5px; height:1080px; background:var(--line); }
+  .team { font-size:44px; color:var(--muted); width:420px; text-align:center; }
+  .digit { font-family:'Oswald', sans-serif; font-weight:700; font-size:220px; line-height:1; width:180px; text-align:center; }
+  .chip { background:#13261F; border:2px solid var(--line); border-radius:20px; padding:26px 36px; width:520px; }
+  .chip .n { font-family:'Oswald', sans-serif; font-weight:700; font-size:72px; color:var(--amber); line-height:1; }
+  .chip .t { font-size:30px; color:var(--muted); margin-top:10px; }
+  .dot { width:88px; height:88px; border-radius:50%; border:4px solid var(--line); display:flex; align-items:center; justify-content:center; font-family:'Oswald'; font-size:34px; color:var(--muted); }
+  .btn { background:var(--amber); color:#14231D; font-family:'Oswald'; font-weight:700; font-size:56px; padding:28px 72px; border-radius:999px; letter-spacing:2px; }
+  .legal { font-size:26px; color:#8FA89B; }
+</style>
+</head>
+<body>
+<div class="pitch"></div>
+<div class="circle" id="bgCircle"></div>
+<div class="midline" id="bgLine"></div>
+
+<!-- SCENE 1: INTRO -->
+<div class="scene" id="s1">
+  <div class="abs eyebrow" id="s1eb" style="left:160px;top:330px">Analityka piłkarska</div>
+  <div class="abs h" id="s1t" style="left:150px;top:390px;font-size:220px">Pewniaczek <span style="color:var(--amber)">PRO</span></div>
+  <div class="abs" id="s1s" style="left:160px;top:680px;font-size:48px;color:var(--muted)">Łamaki 1/2 &nbsp;•&nbsp; Late Goal &nbsp;•&nbsp; Bonusy</div>
+</div>
+
+<!-- SCENE 2: ŁAMAKI -->
+<div class="scene" id="s2">
+  <div class="abs eyebrow" style="left:160px;top:110px">Moduł · Łamaki 1/2</div>
+  <div class="abs h" style="left:160px;top:160px;font-size:96px;width:1600px">Wynik odwrócony po przerwie</div>
+  <div class="abs" id="sb" style="left:160px;top:360px;width:1000px;height:420px;background:#0B1512;border:3px solid var(--line);border-radius:28px">
+    <div class="abs" id="sbLabel" style="left:0;top:34px;width:1000px;text-align:center;font-size:34px;letter-spacing:8px;font-weight:600;color:var(--amber)">DO PRZERWY</div>
+    <div class="abs team" style="left:20px;top:330px">Gospodarz</div>
+    <div class="abs team" style="left:560px;top:330px">Gość</div>
+    <div class="abs digit" id="dH" style="left:140px;top:95px">1</div>
+    <div class="abs digit osw" style="left:410px;top:95px;color:var(--line)">:</div>
+    <div class="abs digit" id="dA" style="left:680px;top:95px">0</div>
+  </div>
+  <div class="abs" id="stamp" style="left:700px;top:805px;transform-origin:center;background:var(--amber);color:#14231D;padding:18px 40px;border-radius:16px;font-family:'Oswald';font-weight:700;font-size:72px;letter-spacing:3px">ŁAMAK ✔</div>
+  <div class="abs chip" id="c1" style="left:1240px;top:360px"><div class="n">5 sezonów</div><div class="t">historii każdej drużyny</div></div>
+  <div class="abs chip" id="c2" style="left:1240px;top:560px"><div class="n" id="cnt">0</div><div class="t">przeanalizowanych meczów</div></div>
+  <div class="abs chip" id="c3" style="left:1240px;top:760px"><div class="n">Serie + H2H</div><div class="t">serie miesięcy i mecze H2H</div></div>
+  <div class="abs" id="s2foot" style="left:160px;top:960px;font-size:36px;color:var(--muted);width:1600px">Pewniaczek pokazuje, które drużyny <b style="color:var(--cream)">najczęściej łamią wynik</b> — zanim mecz się zacznie.</div>
+</div>
+
+<!-- SCENE 3: LATE GOAL -->
+<div class="scene" id="s3">
+  <div class="abs eyebrow" style="left:160px;top:110px">Moduł · Late Goal</div>
+  <div class="abs h" style="left:160px;top:160px;font-size:96px;width:1600px">Gole w końcówkach połów</div>
+  <!-- timeline -->
+  <div class="abs" style="left:160px;top:380px;width:1600px;height:24px;background:#13261F;border-radius:12px"></div>
+  <div class="abs" id="tlFill" style="left:160px;top:380px;width:0;height:24px;background:var(--line);border-radius:12px"></div>
+  <div class="abs" id="z1" style="left:871px;top:350px;width:89px;height:84px;background:var(--amber);border-radius:12px;opacity:0"></div>
+  <div class="abs" id="z2" style="left:1671px;top:350px;width:89px;height:84px;background:var(--amber);border-radius:12px;opacity:0"></div>
+  <div class="abs" id="z1l" style="left:815px;top:450px;width:200px;text-align:center;font-family:'Oswald';font-size:40px;color:var(--amber);opacity:0">40'–45'</div>
+  <div class="abs" id="z2l" style="left:1615px;top:450px;width:200px;text-align:center;font-family:'Oswald';font-size:40px;color:var(--amber);opacity:0">85'–90'</div>
+  <div class="abs" style="left:140px;top:450px;font-family:'Oswald';font-size:36px;color:var(--muted)">0'</div>
+  <div class="abs" style="left:925px;top:300px;font-family:'Oswald';font-size:30px;color:var(--muted)">HT</div>
+  <!-- last 10 -->
+  <div class="abs" id="l10t" style="left:160px;top:560px;font-size:34px;color:var(--muted);letter-spacing:4px;text-transform:uppercase">Ostatnie 10 meczów rywali</div>
+  <div class="abs" id="dots" style="left:160px;top:620px;display:flex;gap:22px"></div>
+  <div class="abs" id="ctr" style="left:160px;top:760px;font-family:'Oswald';font-weight:700;font-size:120px;line-height:1"><span id="ctrN">0</span><span style="color:var(--muted)">/10</span></div>
+  <div class="abs" id="ctrT" style="left:470px;top:790px;font-size:36px;color:var(--muted);width:600px">meczów z golem straconym<br>w końcówce połowy</div>
+  <div class="abs" id="verdict" style="left:1300px;top:580px;width:460px;height:300px;border-radius:28px;background:#123A26;border:4px solid var(--green);display:flex;flex-direction:column;align-items:center;justify-content:center">
+    <div style="font-size:30px;letter-spacing:6px;color:var(--muted)">WERDYKT</div>
+    <div style="font-family:'Oswald';font-weight:700;font-size:150px;line-height:1;color:var(--green)">TAK</div>
+  </div>
+  <div class="abs" id="rule" style="left:1300px;top:900px;width:460px;text-align:center;font-size:30px;color:var(--muted)">≥ 5/10 = TAK &nbsp;·&nbsp; 4/10 = MOŻE</div>
+</div>
+
+<!-- SCENE 4: BONUS REMINDER -->
+<div class="scene" id="s4">
+  <svg class="abs" id="bell" style="left:160px;top:200px" width="200" height="200" viewBox="0 0 24 24" fill="none" stroke="#F2A33A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+  </svg>
+  <div class="abs eyebrow" style="left:410px;top:230px">Przypomnienie</div>
+  <div class="abs h" id="s4t" style="left:410px;top:280px;font-size:110px;width:1400px">Odbierz swój bonus</div>
+  <div class="abs" id="s4card" style="left:160px;top:500px;width:1600px;display:flex;gap:28px">
+    <div class="chip" style="flex:1;width:auto"><div class="n">Depozyt</div><div class="t">bonus od wpłaty</div></div>
+    <div class="chip" style="flex:1;width:auto"><div class="n">Freebet</div><div class="t">zakład bez wkładu</div></div>
+    <div class="chip" style="flex:1;width:auto"><div class="n">Bez ryzyka</div><div class="t">zwrot przegranego kuponu</div></div>
+  </div>
+  <div class="abs" id="s4sub" style="left:160px;top:720px;font-size:40px;color:var(--muted);width:1000px">Wszystkie oferty porównane w zakładce <b style="color:var(--cream)">Promocje</b> — z Twoim kodem.</div>
+  <div class="abs btn" id="cta" style="left:1240px;top:705px">ODBIERZ BONUS</div>
+  <div class="abs legal" style="left:160px;top:960px">18+ · Hazard może uzależniać. Graj odpowiedzialnie, tylko u legalnych bukmacherów.</div>
+</div>
+
+<!-- SCENE 5: OUTRO -->
+<div class="scene" id="s5">
+  <div class="abs h" id="s5t" style="left:0;top:360px;width:1920px;text-align:center;font-size:180px">Pewniaczek <span style="color:var(--amber)">PRO</span></div>
+  <div class="abs" id="s5s" style="left:0;top:600px;width:1920px;text-align:center;font-size:56px;color:var(--muted)">Mniej szukania. Więcej trafnych typów.</div>
+  <div class="abs legal" style="left:0;top:960px;width:1920px;text-align:center">18+ · Graj odpowiedzialnie.</div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const clamp = (x,a=0,b=1) => Math.min(b, Math.max(a, x));
+const prog = (t,a,b) => clamp((t-a)/(b-a));
+const eo = x => 1 - Math.pow(1-x, 3);
+const eback = x => { const c1=1.70158, c3=c1+1; return 1 + c3*Math.pow(x-1,3) + c1*Math.pow(x-1,2); };
+function sceneAlpha(t, a, b, f=0.4){ return Math.min(prog(t,a,a+f), 1-prog(t,b-f,b)); }
+function enter(el, t, a, dur=0.6, dy=40){ const p=eo(prog(t,a,a+dur)); el.style.opacity=p; el.style.transform=`translateY(${(1-p)*dy}px)`; }
+function enterX(el, t, a, dur=0.6, dx=80){ const p=eo(prog(t,a,a+dur)); el.style.opacity=p; el.style.transform=`translateX(${(1-p)*dx}px)`; }
+
+const LATE = [1,0,1,1,0,1,0,1,0,0];
+const dots = $('dots');
+LATE.forEach((v,i)=>{ const d=document.createElement('div'); d.className='dot'; d.textContent=i+1; dots.appendChild(d); });
+const GOALS = [43, 88, 44, 90, 87];
+const s3 = $('s3');
+const goalEls = GOALS.map(m=>{ const g=document.createElement('div'); g.className='abs'; g.style.cssText=`left:${160+1600*m/90-22}px;top:370px;width:44px;height:44px;border-radius:50%;background:#F4F1E8;border:6px solid #0E1A16;opacity:0`; s3.appendChild(g); return g; });
+
+window.render = function(t){
+  // background motion
+  $('bgCircle').style.transform = `scale(${1+0.03*Math.sin(t*0.6)})`;
+  // S1 0–3.6
+  $('s1').style.opacity = sceneAlpha(t, 0, 3.6, 0.35);
+  enter($('s1eb'), t, 0.2); enter($('s1t'), t, 0.45, 0.8, 70); enter($('s1s'), t, 1.1);
+  // S2 3.6–13
+  $('s2').style.opacity = sceneAlpha(t, 3.6, 13, 0.4);
+  enter($('sb'), t, 4.1, 0.6, 60);
+  const flip = t >= 7.4;
+  $('sbLabel').textContent = flip ? 'KONIEC MECZU' : 'DO PRZERWY';
+  $('dA').textContent = t < 6.8 ? '0' : (t < 7.4 ? '1' : '2');
+  [$('dA')].forEach(el=>{ const k = Math.max(prog(t,6.8,7.1) * (1-prog(t,7.1,7.35)), prog(t,7.4,7.7)*(1-prog(t,7.7,8.0))); el.style.transform=`scale(${1+0.25*k})`; el.style.color = t>=6.8 ? '#F2A33A' : '#F4F1E8'; });
+  const sp = prog(t,8.0,8.5); $('stamp').style.opacity = sp>0?1:0; $('stamp').style.transform = `rotate(-8deg) scale(${sp>0? 2.2-1.2*eback(sp):0})`;
+  enterX($('c1'), t, 9.0); enterX($('c2'), t, 9.4); enterX($('c3'), t, 9.8);
+  $('cnt').textContent = Math.round(68563*eo(prog(t,9.4,11.2))).toLocaleString('pl-PL');
+  enter($('s2foot'), t, 10.6);
+  // S3 13–22.6
+  $('s3').style.opacity = sceneAlpha(t, 13, 22.6, 0.4);
+  $('tlFill').style.width = (1600*eo(prog(t,13.4,15.0)))+'px';
+  [['z1',14.6],['z2',15.0],['z1l',14.8],['z2l',15.2]].forEach(([id,a])=>{ $(id).style.opacity = 0.9*eo(prog(t,a,a+0.4)); });
+  goalEls.forEach((g,i)=>{ const p=prog(t,15.6+i*0.25,15.95+i*0.25); g.style.opacity=p>0?1:0; g.style.transform=`translateY(${-60*(1-eback(p))}px)`; });
+  enter($('l10t'), t, 16.4);
+  let lit=0;
+  [...dots.children].forEach((d,i)=>{ const a=16.7+i*0.22; const p=eo(prog(t,a,a+0.3)); d.style.opacity=p; d.style.transform=`scale(${0.6+0.4*p})`;
+    const on = LATE[i] && t>=a+0.15; if(on) lit++;
+    d.style.background = on ? '#3FB874' : 'transparent'; d.style.borderColor = on ? '#3FB874' : '#2C5A45'; d.style.color = on ? '#0E1A16' : '#BFD3C8'; });
+  enter($('ctr'), t, 16.7); enter($('ctrT'), t, 16.9);
+  $('ctrN').textContent = lit;
+  const vp = prog(t,19.4,19.9); $('verdict').style.opacity = vp>0?1:0; $('verdict').style.transform = `scale(${vp>0?0.4+0.6*eback(vp):0})`;
+  enter($('rule'), t, 20.1);
+  // S4 22.6–28.2
+  $('s4').style.opacity = sceneAlpha(t, 22.6, 28.2, 0.4);
+  const ring = prog(t,23.0,24.6); $('bell').style.transform = `rotate(${Math.sin(ring*Math.PI*8)*18*(1-ring)}deg)`; $('bell').style.transformOrigin='50% 10%';
+  enter($('s4t'), t, 23.1, 0.7, 50); enter($('s4card'), t, 23.8, 0.7, 50); enter($('s4sub'), t, 24.5);
+  const cp = prog(t,25.0,25.5); const pulse = t>25.5 ? 1+0.05*Math.sin((t-25.5)*6) : 1;
+  $('cta').style.opacity = cp; $('cta').style.transform = `scale(${(0.6+0.4*eback(cp))*pulse})`;
+  // S5 28.2–30
+  $('s5').style.opacity = Math.min(prog(t,28.2,28.6), 1);
+  enter($('s5t'), t, 28.3, 0.6, 50); enter($('s5s'), t, 28.7);
+};
+window.render(0);
+</script>
+</body>
+</html>
